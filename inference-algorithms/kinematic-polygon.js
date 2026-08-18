@@ -1,0 +1,3 @@
+'use strict'
+const {StormEngine}=require('../lib/storm-engine')
+module.exports={id:'kinematic-polygon',name:'Kinematic polygon interception',description:'Persistent multi-frame cell tracking, robust velocity and vessel-path/polygon interception.',defaults:{enabled:true,weight:1},create({settings,common}){const engine=new StormEngine(common.stormConfig||{});return{id:'kinematic-polygon',name:'Kinematic polygon interception',version:'1',weight:Number(settings.weight)||1,capabilities:{tracking:true,geometry:true,pathInterception:true},infer(context){return engine.evaluate(context.snapshot,context.vessel)}}}}

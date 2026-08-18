@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#101720">
+  <title>Storm Intelligence</title>
+  <link rel="stylesheet" href="dashboard.css">
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <div class="eyebrow">Signal K</div>
+      <h1>Storm Intelligence</h1>
+      <div class="subtitle">Read-only operational monitor</div>
+    </div>
+    <div class="top-actions">
+      <span id="connection" class="badge neutral">Connecting</span>
+      <button id="refresh" type="button">Refresh</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero-grid" aria-label="Storm overview">
+      <article class="hero-card">
+        <div class="label">Overall state</div>
+        <div id="overallState" class="hero-value">—</div>
+        <div id="overallMessage" class="secondary">Loading operational state…</div>
+      </article>
+      <article class="hero-card">
+        <div class="label">Approaching cells</div>
+        <div id="approachingCount" class="hero-value">—</div>
+        <div id="totalCells" class="secondary">— tracked</div>
+      </article>
+      <article class="hero-card">
+        <div class="label">Components</div>
+        <div id="componentHealth" class="hero-value">—</div>
+        <div id="componentSummary" class="secondary">—</div>
+      </article>
+      <article class="hero-card">
+        <div class="label">Last update</div>
+        <div id="lastUpdate" class="hero-value time">—</div>
+        <div id="dataAge" class="secondary">—</div>
+      </article>
+    </section>
+
+    <section class="panel" aria-labelledby="cellsTitle">
+      <div class="panel-head">
+        <div>
+          <h2 id="cellsTitle">Approaching storm cells</h2>
+          <p>Ranked by vessel-relative threat. ETA is impact only when polygon/path intersection is predicted; otherwise it is closest approach.</p>
+        </div>
+        <div class="legend"><span class="risk-dot critical"></span> critical <span class="risk-dot high"></span> high <span class="risk-dot moderate"></span> moderate <span class="risk-dot low"></span> low</div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Risk</th><th>Cell</th><th>ETA</th><th>Current range</th><th>Closest approach</th><th>Evidence</th><th>Source</th></tr></thead>
+          <tbody id="cellsBody"><tr><td colspan="7" class="empty">Loading…</td></tr></tbody>
+        </table>
+      </div>
+      <div id="riskSemantics" class="footnote"></div>
+    </section>
+
+    <section class="panel" aria-labelledby="componentsTitle">
+      <div class="panel-head">
+        <div><h2 id="componentsTitle">Component status</h2><p>Radar, acquisition, storage, observations, sensors and all enabled inference algorithms.</p></div>
+      </div>
+      <div id="components" class="component-grid"><div class="empty">Loading…</div></div>
+    </section>
+
+    <section class="panel compact" aria-labelledby="runtimeTitle">
+      <div class="panel-head"><div><h2 id="runtimeTitle">Runtime</h2></div></div>
+      <dl class="runtime-grid">
+        <div><dt>Plugin version</dt><dd id="version">—</dd></div>
+        <div><dt>Inference horizon</dt><dd id="horizon">—</dd></div>
+        <div><dt>Vessel position</dt><dd id="vesselPosition">—</dd></div>
+        <div><dt>Mode</dt><dd>Read only</dd></div>
+      </dl>
+    </section>
+  </main>
+
+  <footer>Storm Intelligence is decision-support software. Risk scores are operational rankings, not probabilities or official warnings.</footer>
+  <script src="dashboard.js"></script>
+</body>
+</html>
