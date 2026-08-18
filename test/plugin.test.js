@@ -8,6 +8,22 @@ const {tileBBox3857,normalizeTime,extensionManifest}=makePlugin._test
 test('Web Mercator tile bbox is correct for z0',()=>{const b=tileBBox3857(0,0,0);assert.ok(Math.abs(b[0]+20037508.342789244)<1e-6);assert.ok(Math.abs(b[3]-20037508.342789244)<1e-6)})
 test('latest time normalization',()=>{assert.equal(normalizeTime('latest'),null);assert.equal(normalizeTime(undefined),null);assert.match(normalizeTime('2026-08-18T00:30:00Z'),/^2026-08-18T00:30:00\.000Z$/)})
 test('plotter extension manifest supplies Freeboard-compatible panel, widget and button',()=>{const m=extensionManifest('signalk-storm-intelligence','0.2.0');assert.equal(m.apiVersion,'1');assert.ok(m.requires.includes('panels.iframe'));assert.equal(m.buttons[0].action.type,'togglePanel');assert.match(m.panels[0].url,/\/plotterext\/signalk-storm-intelligence\//)})
+test('plugin schema contains no repeated object references',()=>{
+  const app={getDataDirPath:()=>path.join(os.tmpdir(),'radar-schema-test'),setPluginStatus(){},debug(){},error(){},handleMessage(){},getSelfPath(){return null}}
+  const schema=makePlugin(app).schema()
+  const seen=new WeakMap()
+  const repeated=[]
+  function walk(node,nodePath){
+    if(node===null||typeof node!=='object')return
+    if(seen.has(node)){repeated.push(`${nodePath} repeats ${seen.get(node)}`);return}
+    seen.set(node,nodePath)
+    if(Array.isArray(node))node.forEach((value,index)=>walk(value,`${nodePath}[${index}]`))
+    else Object.keys(node).forEach(key=>walk(node[key],`${nodePath}.${key}`))
+  }
+  walk(schema,'schema')
+  assert.deepEqual(repeated,[])
+  assert.doesNotThrow(()=>JSON.stringify(schema))
+})
 test('plugin registers charts and plotterExtensions providers',async()=>{const ps=[];const app={registerResourceProvider:p=>ps.push(p),getDataDirPath:()=>path.join(os.tmpdir(),'radar-test-data'),setPluginStatus(){},debug(){},error(){},handleMessage(){},getSelfPath(){return null}};const p=makePlugin(app);p.start({backgroundEnabled:false,displayProducts:['VMI','SRI']});assert.equal(ps.length,4);assert.ok(ps.find(x=>x.type==='stormIntelligence'));assert.ok(ps.find(x=>x.type==='weatherRadar'));const charts=await ps.find(x=>x.type==='charts').methods.listResources();assert.ok(charts['weather-radar-radar-dpc-vmi']);const exts=await ps.find(x=>x.type==='plotterExtensions').methods.listResources();assert.ok(exts['signalk-storm-intelligence']);p.stop()})
 test('storm engine tracks an approaching polygon and predicts CPA',()=>{const e=new StormEngine({warnDistanceM:50000,alarmDistanceM:10000,horizonMinutes:60,warnSeverity:2,alarmSeverity:4,matchDistanceM:100000});const poly=lon=>({type:'Feature',properties:{severity:3},geometry:{type:'Polygon',coordinates:[[[lon,40],[lon+.01,40],[lon+.01,40.01],[lon,40.01],[lon,40]]]}});const v={position:{longitude:12,latitude:40.005},sog:0,cog:0};e.evaluate({epochMs:0,features:[poly(12.5)]},v);const r=e.evaluate({epochMs:300000,features:[poly(12.45)]},v)[0];assert.ok(r.motion.speed>0);assert.ok(r.cpa.closing);assert.ok(r.cpa.dcpaMeters<r.distanceMeters);assert.notEqual(r.state,'normal')})
 test('distant severe cell does not alarm',()=>{const e=new StormEngine({warnDistanceM:20000,alarmDistanceM:8000,horizonMinutes:60,warnSeverity:2,alarmSeverity:4,matchDistanceM:100000});const f={type:'Feature',properties:{severity:5},geometry:{type:'Polygon',coordinates:[[[14,42],[14.01,42],[14.01,42.01],[14,42.01],[14,42]]]}};const r=e.evaluate({epochMs:0,features:[f]},{position:{longitude:12,latitude:40},sog:0,cog:0})[0];assert.equal(r.state,'normal')})
