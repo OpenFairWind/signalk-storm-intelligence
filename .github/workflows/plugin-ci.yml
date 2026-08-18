@@ -1,0 +1,20 @@
+name: Signal K Plugin CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    uses: SignalK/signalk-server/.github/workflows/plugin-ci.yml@master
+    with:
+      test-command: npm run quality
+      node-versions: '["22", "24"]'
+      enable-armv7: true
+      enable-signalk-integration: false

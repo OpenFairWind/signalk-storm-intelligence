@@ -1,6 +1,13 @@
 # Signal K Storm Intelligence
 
+[![Signal K Plugin CI](https://github.com/OpenFairWind/signalk-storm-intelligence/actions/workflows/plugin-ci.yml/badge.svg)](https://github.com/OpenFairWind/signalk-storm-intelligence/actions/workflows/plugin-ci.yml)
+[![npm](https://img.shields.io/npm/v/signalk-storm-intelligence)](https://www.npmjs.com/package/signalk-storm-intelligence)
+[![Node.js 20+](https://img.shields.io/badge/Node.js-20%2B-43853d)](package.json)
+[![Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
+
 **Signal K Storm Intelligence** (`signalk-storm-intelligence`) is a multisensor severe-weather situational-awareness and research platform for Signal K. It combines shore-based weather-radar mosaics, lightning observations, Signal K Weather API observations, onboard environmental sensors, vessel navigation, and multiple independently pluggable inference algorithms to estimate storm-cell evolution and vessel-relative threat.
+
+![Storm Intelligence operational dashboard](docs/screenshots/operational-dashboard.jpg)
 
 The project is designed around two simultaneous goals:
 
@@ -11,7 +18,7 @@ Storm Intelligence is **not** a replacement for official warnings, competent sea
 
 ## Current release
 
-This source tree is the `2.4.0` release line. Version 2 uses the application identity **Storm Intelligence**. The earlier `weatherRadar` Signal K Resource API remains available as a deprecated read-only compatibility alias during v2; new integrations should use `stormIntelligence`.
+This source tree is the `2.5.0` release line. Version 2 uses the application identity **Storm Intelligence**. The earlier `weatherRadar` Signal K Resource API remains available as a deprecated read-only compatibility alias during v2; new integrations should use `stormIntelligence`.
 
 ## Why this project exists
 

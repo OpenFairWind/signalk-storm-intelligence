@@ -2,7 +2,14 @@
 
 ## Unreleased
 
+## 2.5.0 - 2026-08-18
+
 - Reject malformed, out-of-range, and future-dated lightning observations instead of treating them as fresh corroborating evidence.
+- Add Signal K App Store metadata, a square application icon, an operational screenshot, current category keywords, and package discovery links.
+- Add an explicit npm publish manifest that excludes contributor-only and local-development metadata while retaining tests and store assets.
+- Add the reusable Signal K plugin CI workflow so install, load, activation, schema, lifecycle, package, platform, and test indicators appear in the App Store.
+- Extend repository quality checks to enforce store assets, release notes, safe lifecycle scripts, and publish metadata.
+- Upgrade `adm-zip` to 0.6.x to resolve the high-severity crafted-archive memory-allocation advisory reported by `npm audit`.
 
 ## 2.4.0
 

@@ -1,14 +1,14 @@
 {
   "name": "signalk-storm-intelligence",
-  "version": "2.4.0",
-  "description": "Generic Signal K multisensor storm intelligence runtime with a read-only operational WebApp, provider-agnostic radar/lightning, Weather API and onboard evidence, and pluggable multi-algorithm inference",
+  "version": "2.5.0",
+  "description": "Signal K severe-weather decision support with multisensor storm tracking, vessel-relative hazards, radar overlays, offline replay, and a read-only operational WebApp.",
   "main": "index.js",
   "type": "commonjs",
   "keywords": [
     "signalk-node-server-plugin",
     "signalk-webapp",
     "signalk-category-weather",
-    "signalk-category-chart",
+    "signalk-category-chart-plotters",
     "weather",
     "radar",
     "storm",
@@ -35,7 +35,7 @@
     "node": ">=20"
   },
   "dependencies": {
-    "adm-zip": "^0.5.16",
+    "adm-zip": "^0.6.0",
     "proj4": "^2.19.10",
     "shapefile": "^0.6.6"
   },
@@ -52,11 +52,19 @@
     "type": "git",
     "url": "https://github.com/OpenFairWind/signalk-storm-intelligence.git"
   },
+  "homepage": "https://github.com/OpenFairWind/signalk-storm-intelligence#readme",
+  "bugs": {
+    "url": "https://github.com/OpenFairWind/signalk-storm-intelligence/issues"
+  },
   "license": "Apache-2.0",
   "author": "OpenFairWind contributors",
   "signalk-plugin-enabled-by-default": false,
   "signalk": {
     "displayName": "Storm Intelligence",
+    "appIcon": "./public/assets/storm-intelligence-icon.svg",
+    "screenshots": [
+      "./docs/screenshots/operational-dashboard.jpg"
+    ],
     "recommends": [
       "@signalk/freeboard-sk"
     ]

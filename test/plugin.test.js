@@ -462,7 +462,7 @@ test('v2 identity exposes stormIntelligence primary resource with deprecated wea
   const plugin=makePlugin(app)
   assert.equal(plugin.id,'signalk-storm-intelligence')
   assert.equal(plugin.name,'Storm Intelligence')
-  assert.equal(plugin.version,'2.4.0')
+  assert.equal(plugin.version,'2.5.0')
   plugin.start({backgroundEnabled:false,displayLayers:['radar-dpc:VMI']})
   const primary=await ps.find(x=>x.type==='stormIntelligence').methods.listResources()
   const legacy=await ps.find(x=>x.type==='weatherRadar').methods.listResources()
@@ -580,6 +580,21 @@ test('package exposes companion Signal K webapp and dashboard is strictly read o
   assert.doesNotMatch(js,/method\s*:\s*['"](?:POST|PUT|PATCH|DELETE)['"]/i);assert.doesNotMatch(html,/<form\b/i)
 })
 
+test('package exposes current Signal K App Store metadata and published assets',()=>{
+  const pkg=require('../package.json'),fss=require('node:fs')
+  assert.ok(pkg.keywords.includes('signalk-node-server-plugin'))
+  assert.ok(pkg.keywords.includes('signalk-webapp'))
+  assert.ok(pkg.keywords.includes('signalk-category-weather'))
+  assert.ok(pkg.keywords.includes('signalk-category-chart-plotters'))
+  assert.equal(pkg.signalk.displayName,'Storm Intelligence')
+  assert.ok(pkg.signalk.appIcon.endsWith('.svg'))
+  assert.equal(pkg.signalk.screenshots.length,1)
+  for(const asset of [pkg.signalk.appIcon,...pkg.signalk.screenshots])assert.ok(fss.existsSync(path.join(__dirname,'..',asset)))
+  assert.equal(pkg.scripts.preinstall,undefined)
+  assert.equal(pkg.scripts.install,undefined)
+  assert.equal(pkg.scripts.postinstall,undefined)
+})
+
 test('operational route is registered through readonly router and returns component health',async()=>{
   const ps=[];const routes={};let accessMode=null
   const app={registerResourceProvider:p=>ps.push(p),getDataDirPath:()=>path.join(os.tmpdir(),'storm-operational-webapp'),setPluginStatus(){},debug(){},error(){},handleMessage(){},getSelfPath(){return null}}
@@ -589,7 +604,7 @@ test('operational route is registered through readonly router and returns compon
   assert.equal(accessMode,'readonly');assert.equal(typeof routes['/operational'],'function')
   let payload,statusCode=200;const res={json:x=>{payload=x;return res},status:n=>{statusCode=n;return res},set(){return res},send(){return res}}
   await routes['/operational']({},res)
-  assert.equal(statusCode,200);assert.equal(payload.readOnly,true);assert.ok(Array.isArray(payload.components));assert.ok(Array.isArray(payload.approachingCells));assert.equal(payload.runtime.version,'2.4.0');assert.match(payload.semantics.risk,/not a probability/i)
+  assert.equal(statusCode,200);assert.equal(payload.readOnly,true);assert.ok(Array.isArray(payload.components));assert.ok(Array.isArray(payload.approachingCells));assert.equal(payload.runtime.version,'2.5.0');assert.match(payload.semantics.risk,/not a probability/i)
   plugin.stop()
 })
 
