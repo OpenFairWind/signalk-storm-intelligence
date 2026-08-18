@@ -38,11 +38,11 @@ Threshold changes alter operational behavior and should be versioned/frozen in s
 
 ## 7. Lightning
 
-Lightning configuration selects observation providers, query lookback/radius, map visibility and proximity alarm thresholds. Provider-specific credentials/endpoints live under the observation-provider settings namespace.
+Lightning configuration selects observation providers, query lookback/radius, map visibility and proximity alarm thresholds. `lightningAssociationRadiusNm` controls how far a point strike may be from an existing storm-cell geometry and still corroborate that cell; it never creates a cell. `lightningEvidenceWeight` bounds the confidence contribution from associated strikes. Provider-specific credentials/endpoints live under the observation-provider settings namespace.
 
 ## 8. Onboard environmental evidence
 
-Onboard environment controls include history length and maximum confidence/evidence contribution. Local environmental signals remain bounded corroboration in the default algorithms.
+Onboard environment controls include history length, maximum accepted sample age (`onboardEnvironmentMaxAgeSeconds`) and maximum confidence/evidence contribution. Local environmental signals remain bounded corroboration in the default algorithms.
 
 ## 9. Signal K Weather API evidence
 
@@ -61,15 +61,19 @@ Default operational inference is deterministic (`kinematic-polygon`, `multisenso
 - `max-severity`;
 - `weighted-confidence`.
 
-Each algorithm has an independent object under `inferenceAlgorithmSettings`.
+Each algorithm has an independent object under `inferenceAlgorithmSettings`. Every bundled algorithm exposes its ensemble `weight`, including the deterministic kinematic and multisensor algorithms. Registry defaults are merged before user overrides, so a partial settings object does not discard unspecified algorithm defaults.
 
-## 11. Multimodal DNN
+## 11. Configuration completeness contract
+
+Every core key in the runtime defaults must have a corresponding top-level Signal K schema property. Provider-, observation-provider- and inference-specific settings must be declared by their adapter/algorithm schema and remain namespaced. A deterministic test enforces top-level coverage; contributors must add schema, normalization, documentation and tests together whenever an operational threshold, retention limit, endpoint behavior or scientific weighting becomes configurable.
+
+## 12. Multimodal DNN
 
 The DNN settings can select a model path, confidence threshold, completeness penalty and algorithm weight. A replacement model must satisfy the exact feature schema expected by the runtime and should carry immutable provenance/checksum metadata.
 
 See [`multimodal-dnn.md`](multimodal-dnn.md).
 
-## 12. OpenAI-compatible LLM
+## 13. OpenAI-compatible LLM
 
 Important settings include:
 
@@ -91,11 +95,11 @@ The API secret itself belongs in the named process environment variable, never i
 
 See [`llm-openai-compatible.md`](llm-openai-compatible.md).
 
-## 13. Secrets
+## 14. Secrets
 
 Do not commit secrets or place them in exported benchmark configurations. Research manifests should record secret-variable **names** only when necessary to explain execution configuration.
 
-## 14. Configuration reproducibility
+## 15. Configuration reproducibility
 
 Published/replayed experiments must archive the complete non-secret resolved configuration, not merely the differences from defaults. Defaults can change between releases.
 

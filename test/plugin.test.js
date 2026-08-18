@@ -24,6 +24,15 @@ test('plugin schema contains no repeated object references',()=>{
   assert.deepEqual(repeated,[])
   assert.doesNotThrow(()=>JSON.stringify(schema))
 })
+test('every core runtime default is exposed in the Signal K configuration schema',()=>{
+  const app={getDataDirPath:()=>path.join(os.tmpdir(),'radar-schema-coverage'),setPluginStatus(){},debug(){},error(){},handleMessage(){},getSelfPath(){return null}}
+  const plugin=makePlugin(app),properties=plugin.schema().properties
+  assert.deepEqual(Object.keys(plugin._test.DEFAULTS).filter(key=>!properties[key]),[])
+  assert.equal(properties.lightningAssociationRadiusNm.default,plugin._test.DEFAULTS.lightningAssociationRadiusNm)
+  assert.equal(properties.onboardEnvironmentMaxAgeSeconds.default,plugin._test.DEFAULTS.onboardEnvironmentMaxAgeSeconds)
+  assert.ok(properties.inferenceAlgorithmSettings.properties['kinematic-polygon'].properties.weight)
+  assert.ok(properties.inferenceAlgorithmSettings.properties['multisensor-evidence'].properties.weight)
+})
 test('plugin registers charts and plotterExtensions providers',async()=>{const ps=[];const app={registerResourceProvider:p=>ps.push(p),getDataDirPath:()=>path.join(os.tmpdir(),'radar-test-data'),setPluginStatus(){},debug(){},error(){},handleMessage(){},getSelfPath(){return null}};const p=makePlugin(app);p.start({backgroundEnabled:false,displayProducts:['VMI','SRI']});assert.equal(ps.length,4);assert.ok(ps.find(x=>x.type==='stormIntelligence'));assert.ok(ps.find(x=>x.type==='weatherRadar'));const charts=await ps.find(x=>x.type==='charts').methods.listResources();assert.ok(charts['weather-radar-radar-dpc-vmi']);const exts=await ps.find(x=>x.type==='plotterExtensions').methods.listResources();assert.ok(exts['signalk-storm-intelligence']);p.stop()})
 test('storm engine tracks an approaching polygon and predicts CPA',()=>{const e=new StormEngine({warnDistanceM:50000,alarmDistanceM:10000,horizonMinutes:60,warnSeverity:2,alarmSeverity:4,matchDistanceM:100000});const poly=lon=>({type:'Feature',properties:{severity:3},geometry:{type:'Polygon',coordinates:[[[lon,40],[lon+.01,40],[lon+.01,40.01],[lon,40.01],[lon,40]]]}});const v={position:{longitude:12,latitude:40.005},sog:0,cog:0};e.evaluate({epochMs:0,features:[poly(12.5)]},v);const r=e.evaluate({epochMs:300000,features:[poly(12.45)]},v)[0];assert.ok(r.motion.speed>0);assert.ok(r.cpa.closing);assert.ok(r.cpa.dcpaMeters<r.distanceMeters);assert.notEqual(r.state,'normal')})
 test('distant severe cell does not alarm',()=>{const e=new StormEngine({warnDistanceM:20000,alarmDistanceM:8000,horizonMinutes:60,warnSeverity:2,alarmSeverity:4,matchDistanceM:100000});const f={type:'Feature',properties:{severity:5},geometry:{type:'Polygon',coordinates:[[[14,42],[14.01,42],[14.01,42.01],[14,42.01],[14,42]]]}};const r=e.evaluate({epochMs:0,features:[f]},{position:{longitude:12,latitude:40},sog:0,cog:0})[0];assert.equal(r.state,'normal')})
@@ -371,6 +380,16 @@ test('lightning evidence attaches to generic storm cells without provider coupli
   assert.ok(out.threat.evidence.lightning)
 })
 
+test('lightning corroboration honors configured lookback, association radius and zero weight',()=>{
+  const {attachLightning}=require('../lib/lightning-engine')
+  const now=Date.parse('2026-08-18T01:00:00Z')
+  const cell={id:'x',geometry:{type:'Polygon',coordinates:[[[12,40],[12.01,40],[12.01,40.01],[12,40.01],[12,40]]]},threat:{confidence:.5}}
+  const strikes=[{id:'old',time:new Date(now-20*60000).toISOString(),position:{latitude:40.005,longitude:12.005}},{id:'far',time:new Date(now-60000).toISOString(),position:{latitude:40.2,longitude:12.2}}]
+  const out=attachLightning([cell],strikes,now,{lookbackMinutes:10,associationRadiusM:1000,evidenceWeight:0})[0]
+  assert.equal(out.lightning.countAssociated,0)
+  assert.equal(out.threat.confidence,.5)
+})
+
 test('onboard environmental fusion uses Signal K standard paths and trends',()=>{
   const {EnvironmentFusion}=require('../lib/environment-fusion')
   let vals={'environment.wind.speedTrue':5,'environment.wind.directionTrue':0,'environment.outside.temperature':298.15,'environment.outside.humidity':.55}
@@ -463,6 +482,14 @@ test('inference algorithms are independently discoverable and can run together',
   assert.equal(cells.length,1);assert.equal(engine.describe().algorithms.length,2)
 })
 
+test('inference registry merges declared defaults with user overrides',()=>{
+  const {instantiateInferenceAlgorithms}=require('../lib/inference-registry')
+  const defs=new Map([['configured',{id:'configured',defaults:{weight:.7,threshold:4},create({settings}){return{id:'configured',name:'Configured',weight:settings.weight,settings,infer(){return[]}}}}]])
+  const algorithm=instantiateInferenceAlgorithms(defs,['configured'],{configured:{threshold:9}}).get('configured')
+  assert.equal(algorithm.weight,.7)
+  assert.deepEqual(algorithm.settings,{weight:.7,threshold:9})
+})
+
 test('inference registry accepts a synthetic third algorithm without core changes', async () => {
   const os=require('node:os'),fs=require('node:fs'),path=require('node:path')
   const { discoverInferenceAlgorithms, instantiateInferenceAlgorithms } = require('../lib/inference-registry')
@@ -478,7 +505,7 @@ test('v2 identity exposes stormIntelligence primary resource with deprecated wea
   const plugin=makePlugin(app)
   assert.equal(plugin.id,'signalk-storm-intelligence')
   assert.equal(plugin.name,'Storm Intelligence')
-  assert.equal(plugin.version,'2.5.0')
+  assert.equal(plugin.version,'2.5.1')
   plugin.start({backgroundEnabled:false,displayLayers:['radar-dpc:VMI']})
   const primary=await ps.find(x=>x.type==='stormIntelligence').methods.listResources()
   const legacy=await ps.find(x=>x.type==='weatherRadar').methods.listResources()
@@ -620,7 +647,7 @@ test('operational route is registered through readonly router and returns compon
   assert.equal(accessMode,'readonly');assert.equal(typeof routes['/operational'],'function')
   let payload,statusCode=200;const res={json:x=>{payload=x;return res},status:n=>{statusCode=n;return res},set(){return res},send(){return res}}
   await routes['/operational']({},res)
-  assert.equal(statusCode,200);assert.equal(payload.readOnly,true);assert.ok(Array.isArray(payload.components));assert.ok(Array.isArray(payload.approachingCells));assert.equal(payload.runtime.version,'2.5.0');assert.match(payload.semantics.risk,/not a probability/i)
+  assert.equal(statusCode,200);assert.equal(payload.readOnly,true);assert.ok(Array.isArray(payload.components));assert.ok(Array.isArray(payload.approachingCells));assert.equal(payload.runtime.version,'2.5.1');assert.match(payload.semantics.risk,/not a probability/i)
   plugin.stop()
 })
 

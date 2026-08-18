@@ -222,6 +222,15 @@ npm run quality
 npm pack --dry-run
 ```
 
+### Configuration consistency
+
+- Every core runtime default must have a user-facing property in the Signal K plugin schema.
+- Provider, observation-provider and inference settings must remain in their adapter-owned namespaces; do not add provider or algorithm IDs to generic configuration code.
+- Declare the schema type, bounds, units and default at the same time as the runtime setting, and normalize untrusted persisted values to the same bounds before use.
+- Merge adapter/algorithm defaults before applying user overrides so partial nested settings remain stable.
+- Operational thresholds, evidence weights, freshness limits, timeouts, retry/concurrency limits and retention controls must not be hidden constants when deployment conditions can reasonably require tuning.
+- Configuration changes require deterministic schema/default/runtime coverage tests and an update to `docs/configuration.md`; scientifically meaningful settings must also be frozen in reproducibility manifests.
+
 ## 14. Documentation standards
 
 Documentation is part of the scientific interface.

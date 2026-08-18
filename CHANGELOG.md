@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 2.5.1 - 2026-08-18
+
+- Complete the user-configurable lightning and onboard-environment evidence controls by exposing strike-to-cell association radius, lightning evidence weight and onboard sample freshness.
+- Expose ensemble weights for the bundled deterministic inference algorithms and merge algorithm defaults before partial user overrides.
+- Add configuration schema/default coverage tests and configuration maintenance rules to `AGENTS.md`.
+
 ## 2.5.0 - 2026-08-18
 
 - Reject malformed, out-of-range, and future-dated lightning observations instead of treating them as fresh corroborating evidence.
