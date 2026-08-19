@@ -4,6 +4,8 @@
 
 Freeboard-SK is the principal map presentation target for the reference implementation. The integration is deliberately built on Signal K chart resources and Plotter Extensions rather than DOM/OpenLayers internals so the design remains portable to other conforming plotters.
 
+![Storm Intelligence radar overlays and controls in Freeboard-SK](screenshots/freeboard-storm-intelligence.png)
+
 ## 2. Radar mosaics
 
 Enabled raster products are advertised as chart resources with provider/product identity, bounds, zoom limits, attribution and a local Storm Intelligence tile URL.

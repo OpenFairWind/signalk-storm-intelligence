@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 2.5.2 - 2026-08-19
+
+- Correct Radar-DPC latest-product discovery and raw-product downloads to use the documented `/wide/product` API routes, fixing the HRD background-acquisition HTTP 404 warning.
+- Add deterministic coverage for Radar-DPC product discovery and raw-download request paths.
+- Add a current Storm Intelligence Freeboard-SK integration screenshot to the operator documentation.
+
 ## 2.5.1 - 2026-08-18
 
 - Complete the user-configurable lightning and onboard-environment evidence controls by exposing strike-to-cell association radius, lightning evidence weight and onboard sample freshness.

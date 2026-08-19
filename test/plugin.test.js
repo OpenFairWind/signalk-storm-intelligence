@@ -505,7 +505,7 @@ test('v2 identity exposes stormIntelligence primary resource with deprecated wea
   const plugin=makePlugin(app)
   assert.equal(plugin.id,'signalk-storm-intelligence')
   assert.equal(plugin.name,'Storm Intelligence')
-  assert.equal(plugin.version,'2.5.1')
+  assert.equal(plugin.version,'2.5.2')
   plugin.start({backgroundEnabled:false,displayLayers:['radar-dpc:VMI']})
   const primary=await ps.find(x=>x.type==='stormIntelligence').methods.listResources()
   const legacy=await ps.find(x=>x.type==='weatherRadar').methods.listResources()
@@ -647,7 +647,7 @@ test('operational route is registered through readonly router and returns compon
   assert.equal(accessMode,'readonly');assert.equal(typeof routes['/operational'],'function')
   let payload,statusCode=200;const res={json:x=>{payload=x;return res},status:n=>{statusCode=n;return res},set(){return res},send(){return res}}
   await routes['/operational']({},res)
-  assert.equal(statusCode,200);assert.equal(payload.readOnly,true);assert.ok(Array.isArray(payload.components));assert.ok(Array.isArray(payload.approachingCells));assert.equal(payload.runtime.version,'2.5.1');assert.match(payload.semantics.risk,/not a probability/i)
+  assert.equal(statusCode,200);assert.equal(payload.readOnly,true);assert.ok(Array.isArray(payload.components));assert.ok(Array.isArray(payload.approachingCells));assert.equal(payload.runtime.version,'2.5.2');assert.match(payload.semantics.risk,/not a probability/i)
   plugin.stop()
 })
 
