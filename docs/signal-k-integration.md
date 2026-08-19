@@ -73,6 +73,8 @@ Default algorithms preserve the safety rule that environmental corroboration alo
 
 The companion WebApp is classified as `signalk-webapp` and reads a consolidated `/operational` plugin endpoint. The route is registered with readonly access.
 
+Its `signalk.appIcon` package metadata is resolved relative to the published `public` directory, following the Signal K WebApp contract. The bundled square PNG is used by both the server Webapps list and App Store catalogue.
+
 The WebApp must remain non-mutating unless a future security/UX redesign explicitly introduces controlled actions.
 
 ## 10. Units and timestamps

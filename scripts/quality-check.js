@@ -118,13 +118,13 @@ if (!pkg.author) fail('package author is required for App Store attribution')
 if (!pkg.repository?.url || !pkg.homepage || !pkg.bugs?.url) fail('package discovery links must include repository, homepage and bugs')
 for (const name of ['preinstall', 'install', 'postinstall']) if (pkg.scripts?.[name]) fail(`App Store cannot run lifecycle script: ${name}`)
 
-const iconPath = path.resolve(ROOT, pkg.signalk?.appIcon || '')
+const iconPath = path.resolve(ROOT, 'public', pkg.signalk?.appIcon || '')
 if (!pkg.signalk?.displayName) fail('signalk.displayName is required')
 if (!pkg.signalk?.appIcon || !fs.existsSync(iconPath)) fail('signalk.appIcon must reference a published icon')
 else {
-  const icon = fs.readFileSync(iconPath, 'utf8')
-  const viewBox = icon.match(/viewBox=["']\s*0\s+0\s+(\d+)\s+(\d+)\s*["']/)
-  if (path.extname(iconPath) !== '.svg' || !viewBox || Number(viewBox[1]) < 128 || Number(viewBox[2]) < 128 || viewBox[1] !== viewBox[2]) fail('store icon must be a square SVG of at least 128x128')
+  checkStoreImage(iconPath, 128, 128, 500 * 1024)
+  const icon = fs.readFileSync(iconPath)
+  if (icon.readUInt32BE(16) !== icon.readUInt32BE(20)) fail('store icon must be square')
 }
 
 if (!Array.isArray(pkg.signalk?.screenshots) || pkg.signalk.screenshots.length < 1 || pkg.signalk.screenshots.length > 6) fail('signalk.screenshots must contain 1-6 package-relative images')

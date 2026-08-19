@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 2.5.4 - 2026-08-19
+
+- Correct the Signal K WebApp/App Store icon metadata to use a public-directory-relative square PNG, with deterministic path and image validation.
+
 ## 2.5.3 - 2026-08-19
 
 - Follow the current Radar-DPC root REST routes and native HRD binary-product feed, including bounded publication-lag discovery and strict binary polygon validation.
