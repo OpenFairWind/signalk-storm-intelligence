@@ -39,6 +39,7 @@
     "LICENSE",
     "README.md",
     "docs",
+    "!docs/board-proposal-notes.md",
     "index.js",
     "inference-algorithms",
     "lib",
