@@ -132,22 +132,23 @@ Use `curl --fail --location --retry 3` for HTTP acquisition. Save response heade
 
 Radar-DPC is the preferred reference radar source for this Italian case because the same operational system provides national mosaics and the HRD severe-precipitation vector product.
 
-The documented REST workflow provides:
+The Radar-DPC deployment rechecked on **19 August 2026** provides:
 
-- `findAvailableProducts` to discover product types;
-- `findLastProductByType` for the latest timestamp/cadence;
-- `existsProduct?type=...&time=...` to test an exact UTC millisecond timestamp;
-- `downloadProduct` using a POST body containing `productType` and `productDate`.
+- root REST operations such as `findLastProductByType` and `downloadProduct` for raster products;
+- timestamped HRD binary polygon objects in the provider's public product-object store;
+- WMS/WMTS rendering for visual control.
 
-### 5.1 Verify the service and product names
+The previously documented `/wide/product` REST prefix now returns an access-denied response and must not be assumed to remain stable. Archive interfaces are time-sensitive: freeze the exact request URLs, retrieval time, response metadata and source revision used by an experiment.
+
+### 5.1 Verify the live raster clock
 
 ```bash
 curl --fail --location \
-  'https://radar-api.protezionecivile.it/wide/product/findAvailableProducts' \
-  -o raw/radar-dpc/available-products.json
+  'https://radar-api.protezionecivile.it/findLastProductByType?type=VMI&lang=it' \
+  -o raw/radar-dpc/latest-vmi.json
 ```
 
-Confirm that `VMI`, `SRI` and `HRD` are advertised before acquisition. Provider catalogues can change.
+Repeat for `SRI`. HRD is not currently advertised through this REST result; use the exact-object check below. A VMI timestamp is only a candidate time index for HRD and is not evidence that the corresponding HRD object exists.
 
 ### 5.2 Generate exact 5-minute timestamps
 
@@ -165,30 +166,23 @@ while t <= end:
 PY
 ```
 
-### 5.3 Check availability and download native products
+### 5.3 Check and download exact HRD binary objects
 
-For each timestamp first call `existsProduct`. Download only timestamps reported available. This is important: provider archives can contain gaps and the requested instant may differ from the actual product timestamp.
+HRD objects currently use the UTC epoch-millisecond key `HRD/hrd_5min_<time>.bin`. Check and save each exact object independently. HTTP 403 or 404 means that frame is unavailable; record the gap rather than silently substituting another timestamp.
 
 ```bash
 while read iso ms; do
-  for product in VMI SRI HRD; do
-    available=$(curl --fail --silent --location \
-      "https://radar-api.protezionecivile.it/wide/product/existsProduct?type=${product}&time=${ms}" || echo false)
-    printf '%s,%s,%s,%s\n' "$iso" "$ms" "$product" "$available" >> raw/radar-dpc/availability.csv
-    if [ "$available" = "true" ]; then
-      ext=bin
-      [ "$product" = HRD ] && ext=zip
-      curl --fail --location --retry 3 \
-        -H 'Content-Type: application/json' \
-        --data "{\"productType\":\"${product}\",\"productDate\":${ms}}" \
-        'https://radar-api.protezionecivile.it/wide/product/downloadProduct' \
-        -o "raw/radar-dpc/${product}/${ms}.${ext}"
-    fi
-  done
+  url="https://s3-prod-dpc-radar-webp-cache.s3.eu-south-1.amazonaws.com/HRD/hrd_5min_${ms}.bin"
+  if curl --fail --location --retry 3 "$url" -o "raw/radar-dpc/HRD/${ms}.bin"; then
+    printf '%s,%s,HRD,true\n' "$iso" "$ms" >> raw/radar-dpc/availability.csv
+  else
+    printf '%s,%s,HRD,false\n' "$iso" "$ms" >> raw/radar-dpc/availability.csv
+    rm -f "raw/radar-dpc/HRD/${ms}.bin"
+  fi
 done < radar-times.txt
 ```
 
-Do not assume the raster filename extension returned by the service. Inspect `Content-Type`, GDAL identification and/or archive contents and record the actual representation in the manifest. HRD downloads are expected to be archives containing shapefile components according to the Radar-DPC documentation.
+The current HRD binary format begins with a versioned header and contains delta-encoded WGS84 polygon rings plus an explicit attribute mask. Preserve the bytes unchanged and record checksums before decoding. Older frozen datasets may contain provider-native ZIP/shapefile HRD artifacts; retain their original format and decoder provenance rather than rewriting them as current binaries.
 
 ### 5.4 Optional WMS visual-control frames
 
@@ -536,7 +530,7 @@ A future inference algorithm must follow `inference-algorithm-specification.md` 
 - [ ] Radar-DPC product catalogue saved.
 - [ ] VMI availability checked and available frames downloaded.
 - [ ] SRI availability checked and available frames downloaded.
-- [ ] HRD availability checked and available vector archives downloaded.
+- [ ] HRD availability checked and exact native vector objects downloaded with gaps recorded.
 - [ ] Lightning point observations acquired legally or limitation documented.
 - [ ] Weather-station source files and station metadata saved.
 - [ ] Reanalysis/model controls stored separately from observations.

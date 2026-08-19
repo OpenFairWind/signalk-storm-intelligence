@@ -18,6 +18,8 @@ Provider-qualified radar products use `provider:PRODUCT`, preventing collisions 
 
 Configuring a provider-qualified layer/target can implicitly require that provider to be instantiated; the runtime validates product existence against discovered adapter metadata.
 
+Radar-DPC keeps its REST, WMS and HRD binary-product endpoints in the adapter-owned `providerSettings.radar-dpc` namespace. HRD discovery uses the latest VMI observation only as a bounded time index, then verifies the exact HRD object before reporting that timestamp; unavailable frames are not silently substituted.
+
 ## 3. Background acquisition
 
 Important controls include acquisition enablement/poll interval and archive retention by maximum age/bytes. Raw acquisition is capability-dependent; WMS-only providers are not treated as raw-download providers.

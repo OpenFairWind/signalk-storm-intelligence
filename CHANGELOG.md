@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 2.5.3 - 2026-08-19
+
+- Follow the current Radar-DPC root REST routes and native HRD binary-product feed, including bounded publication-lag discovery and strict binary polygon validation.
+- Expose the HRD binary endpoint in the Radar-DPC provider namespace and update the acquisition/reproducibility documentation for the current upstream contract.
+
 ## 2.5.2 - 2026-08-19
 
 - Correct Radar-DPC latest-product discovery and raw-product downloads to use the documented `/wide/product` API routes, fixing the HRD background-acquisition HTTP 404 warning.
