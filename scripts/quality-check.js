@@ -117,6 +117,10 @@ if (!pkg.description || pkg.description.length < 50 || pkg.description.length > 
 if (!pkg.author) fail('package author is required for App Store attribution')
 if (!pkg.repository?.url || !pkg.homepage || !pkg.bugs?.url) fail('package discovery links must include repository, homepage and bugs')
 for (const name of ['preinstall', 'install', 'postinstall']) if (pkg.scripts?.[name]) fail(`App Store cannot run lifecycle script: ${name}`)
+if (!Array.isArray(pkg.files)) fail('package files publish manifest is required')
+for (const document of ['README.md', 'CHANGELOG.md']) {
+  if (!pkg.files?.includes(document)) fail(`package files publish manifest must include root ${document}`)
+}
 
 const iconPath = path.resolve(ROOT, 'public', pkg.signalk?.appIcon || '')
 if (!pkg.signalk?.displayName) fail('signalk.displayName is required')

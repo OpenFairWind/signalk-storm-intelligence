@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 2.5.5 - 2026-08-19
+
+- Make root `README.md` and `CHANGELOG.md` explicit npm publish-manifest entries and enforce their inclusion in release-quality checks.
+
 ## 2.5.4 - 2026-08-19
 
 - Correct the Signal K WebApp/App Store icon metadata to use a public-directory-relative square PNG, with deterministic path and image validation.
