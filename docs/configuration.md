@@ -63,7 +63,9 @@ Default operational inference is deterministic (`kinematic-polygon`, `multisenso
 - `max-severity`;
 - `weighted-confidence`.
 
-Each algorithm has an independent object under `inferenceAlgorithmSettings`. Every bundled algorithm exposes its ensemble `weight`, including the deterministic kinematic and multisensor algorithms. Registry defaults are merged before user overrides, so a partial settings object does not discard unspecified algorithm defaults.
+Each algorithm has an independent object under `inferenceAlgorithmSettings`. Every bundled algorithm exposes its ensemble `weight`, including the deterministic kinematic and multisensor algorithms. Weights range from 0 to 5; zero keeps execution/provenance while removing ensemble influence. Registry defaults are merged before user overrides, so a partial settings object does not discard unspecified algorithm defaults.
+
+`stormBaseUncertaintyNm` accepts zero. This disables the fixed base term only; motion confidence and residual error can still produce non-zero track uncertainty.
 
 ## 11. Configuration completeness contract
 

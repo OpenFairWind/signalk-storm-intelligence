@@ -165,7 +165,11 @@ module.exports = function (app) {
   const plugin = { id: 'signalk-storm-intelligence', name: 'Storm Intelligence', version: PACKAGE_VERSION }
   let cfg = { ...DEFAULTS }, providers = new Map(), observationProviders = new Map(), inferenceAlgorithms = new Map(), inferenceEngine, cache = makeCache(DEFAULTS.cacheEntries), charts = {}, storage, tileStore, environmentFusion, weatherApiFusion
   let timer = null, running = false, busy = false, lastAcquired = {}, lastPrefetched = {}, cells = [], lightningStrikes = [], lightningState = 'normal', lightningMessage = '', environmentContext = {available:false}, weatherApiContext = {available:false}, hazardSnapshots = new Map(), hazardSequence = 0, activeHazardSlot = 0, lastAlarm = 'normal', lastAlarmText = '', lastError = null, assetsMounted = false
-  const err = m => { lastError = m; app.error?.(m) }, status = m => app.setPluginStatus?.(m)
+  const activeErrors = new Map()
+  const syncLastError = () => { lastError = [...activeErrors.values()].at(-1)?.message || null }
+  const err = (message, component = 'runtime') => { activeErrors.set(component, { message, at: new Date().toISOString() }); syncLastError(); app.error?.(message) }
+  const recovered = component => { activeErrors.delete(component); syncLastError() }
+  const status = m => app.setPluginStatus?.(m)
 
   function dataDir() { return app.getDataDirPath?.() || path.join(process.cwd(), 'storm-intelligence-data') }
   function vessel() { return { position: app.getSelfPath?.('navigation.position') || null, sog: app.getSelfPath?.('navigation.speedOverGround'), cog: app.getSelfPath?.('navigation.courseOverGroundTrue') } }
@@ -484,11 +488,18 @@ module.exports = function (app) {
     const t = splitTarget(target), provider = getProvider(t.providerId), meta = getProduct(provider, t.product)
     if (!productCapabilities(provider, meta).cells) return
     const features = await provider.cellsFromRaw(t.product, buffer)
-    cells = (await inferenceEngine.infer({ snapshot:{epochMs:latest.epochMs,features}, vessel:vessel(), lightningStrikes, environmentContext, weatherApiContext, config:cfg, now:Date.now() })).map(c => ({ ...c, provider: t.providerId, product: t.product, time: latest.time }))
+    const inferred = await inferenceEngine.infer({ snapshot:{epochMs:latest.epochMs,features}, vessel:vessel(), lightningStrikes, environmentContext, weatherApiContext, config:cfg, now:Date.now() })
+    const inferenceHealth = inferenceEngine.describe().health
+    if (!inferenceHealth.usable) {
+      notify('warn', 'Storm inference unavailable; no all-clear can be established', { provider: t.providerId, product: t.product, time: latest.time, inference: inferenceHealth })
+      throw new Error(`storm inference unavailable (${inferenceHealth.failedAlgorithms.join(', ') || 'no authoritative detector'})`)
+    }
+    cells = inferred.map(c => ({ ...c, provider: t.providerId, product: t.product, time: latest.time }))
     publishHazardSnapshot(latest.time)
     const threatening = cells.find(c => c.state === 'alarm') || cells.find(c => c.state === 'warn')
     if (threatening) notify(threatening.state, stormMessage(threatening), { provider: t.providerId, product: t.product, time: latest.time, cell: threatening })
-    else notify('normal', 'No approaching severe-weather cell detected', { provider: t.providerId, product: t.product, time: latest.time })
+    else if (inferenceHealth.state === 'degraded') notify('warn', 'Storm inference degraded; no authoritative all-clear is available', { provider: t.providerId, product: t.product, time: latest.time, inference: inferenceHealth })
+    else notify('normal', 'No approaching severe-weather cell detected', { provider: t.providerId, product: t.product, time: latest.time, inference: inferenceHealth })
   }
 
   async function acquireOne(target) {
@@ -506,8 +517,8 @@ module.exports = function (app) {
       const ext = typeof provider.rawExtension === 'function' ? provider.rawExtension(t.product, d.key) : '.bin'
       await storage.put(storageProduct, latest.epochMs, raw, ext)
     }
-    lastAcquired[target] = latest.epochMs
     await processStorm(target, latest, raw)
+    lastAcquired[target] = latest.epochMs
     return true
   }
 
@@ -546,7 +557,7 @@ module.exports = function (app) {
     const results = []
     if (!cfg.prefetchEnabled) return results
     for (const target of cfg.prefetchTargets) {
-      try { results.push(await prefetchOne(target)) } catch (e) { err(`Prefetch ${target}: ${e.message}`); results.push({ target, error: e.message }) }
+      try { results.push(await prefetchOne(target)); recovered(`prefetch:${target}`) } catch (e) { err(`Prefetch ${target}: ${e.message}`, `prefetch:${target}`); results.push({ target, error: e.message }) }
     }
     await tileStore?.recycle()
     return results
@@ -572,7 +583,7 @@ module.exports = function (app) {
       if(cfg.onboardEnvironmentEnabled) environmentContext=environmentFusion.sample(app)
       if(cfg.weatherApiObservationsEnabled){const pos=vessel().position;weatherApiContext=pos?await weatherApiFusion.sample(app,pos):{available:false,reason:'no-position',samples:[]}}
       await lightningCycle()
-      for (const target of cfg.acquisitionTargets) try { await acquireOne(target) } catch (e) { err(`Acquisition ${target}: ${e.message}`) }
+      for (const target of cfg.acquisitionTargets) try { await acquireOne(target); recovered(`acquisition:${target}`) } catch (e) { err(`Acquisition ${target}: ${e.message}`, `acquisition:${target}`) }
       await prefetchCycle()
       await storage.recycle()
       status(`Weather radar active; ${cfg.displayLayers.length} overlays; ${providers.size} providers; storm ${lastAlarm}`)
@@ -621,7 +632,7 @@ module.exports = function (app) {
       hazardOverlayOpacity: Number.isFinite(Number(settings.hazardOverlayOpacity)) ? Math.max(0, Math.min(1, Number(settings.hazardOverlayOpacity))) : DEFAULTS.hazardOverlayOpacity,
       stormHistoryFrames: Math.max(2, Math.min(24, Number(settings.stormHistoryFrames) || DEFAULTS.stormHistoryFrames)),
       stormPathStepSec: Math.max(15, Math.min(300, Number(settings.stormPathStepSec) || DEFAULTS.stormPathStepSec)),
-      stormBaseUncertaintyNm: Math.max(0, Math.min(20, Number(settings.stormBaseUncertaintyNm) || DEFAULTS.stormBaseUncertaintyNm)),
+      stormBaseUncertaintyNm: Number.isFinite(Number(settings.stormBaseUncertaintyNm)) ? Math.max(0, Math.min(20, Number(settings.stormBaseUncertaintyNm))) : DEFAULTS.stormBaseUncertaintyNm,
       stormMaxUncertaintyNm: Math.max(1, Math.min(50, Number(settings.stormMaxUncertaintyNm) || DEFAULTS.stormMaxUncertaintyNm)),
       lightningLookbackMinutes:Math.max(5,Math.min(180,Number(settings.lightningLookbackMinutes)||DEFAULTS.lightningLookbackMinutes)),lightningQueryRadiusNm:Math.max(10,Math.min(500,Number(settings.lightningQueryRadiusNm)||DEFAULTS.lightningQueryRadiusNm)),lightningAssociationRadiusNm:Math.max(.5,Math.min(100,Number(settings.lightningAssociationRadiusNm)||DEFAULTS.lightningAssociationRadiusNm)),lightningEvidenceWeight:Number.isFinite(Number(settings.lightningEvidenceWeight))?Math.max(0,Math.min(.3,Number(settings.lightningEvidenceWeight))):DEFAULTS.lightningEvidenceWeight,lightningWarningNm:Math.max(1,Number(settings.lightningWarningNm)||DEFAULTS.lightningWarningNm),lightningAlarmNm:Math.max(.5,Number(settings.lightningAlarmNm)||DEFAULTS.lightningAlarmNm),lightningMinStrikes:Math.max(1,Number(settings.lightningMinStrikes)||DEFAULTS.lightningMinStrikes),onboardEnvironmentHistoryMinutes:Math.max(5,Math.min(180,Number(settings.onboardEnvironmentHistoryMinutes)||DEFAULTS.onboardEnvironmentHistoryMinutes)),onboardEnvironmentMaxAgeSeconds:Math.max(10,Math.min(3600,Number(settings.onboardEnvironmentMaxAgeSeconds)||DEFAULTS.onboardEnvironmentMaxAgeSeconds)),onboardEnvironmentEvidenceWeight:Number.isFinite(Number(settings.onboardEnvironmentEvidenceWeight))?Math.max(0,Math.min(.3,Number(settings.onboardEnvironmentEvidenceWeight))):DEFAULTS.onboardEnvironmentEvidenceWeight,weatherApiSampleRadiusNm:Math.max(1,Math.min(300,Number(settings.weatherApiSampleRadiusNm)||DEFAULTS.weatherApiSampleRadiusNm)),weatherApiSampleBearings:Math.max(4,Math.min(16,Number(settings.weatherApiSampleBearings)||DEFAULTS.weatherApiSampleBearings)),weatherApiMaxCount:Math.max(1,Math.min(12,Number(settings.weatherApiMaxCount)||DEFAULTS.weatherApiMaxCount)),weatherApiMaxAgeMinutes:Math.max(5,Math.min(180,Number(settings.weatherApiMaxAgeMinutes)||DEFAULTS.weatherApiMaxAgeMinutes)),weatherApiEvidenceWeight:Number.isFinite(Number(settings.weatherApiEvidenceWeight))?Math.max(0,Math.min(.3,Number(settings.weatherApiEvidenceWeight))):DEFAULTS.weatherApiEvidenceWeight,
       inferenceAlgorithms:Array.isArray(settings.inferenceAlgorithms)?[...new Set(settings.inferenceAlgorithms.filter(id=>INFERENCE_ALGORITHMS.has(id)))]:[...DEFAULTS.inferenceAlgorithms], inferenceStrategy:['max-severity','weighted-confidence'].includes(settings.inferenceStrategy)?settings.inferenceStrategy:DEFAULTS.inferenceStrategy, inferenceAlgorithmSettings:settings.inferenceAlgorithmSettings&&typeof settings.inferenceAlgorithmSettings==='object'?settings.inferenceAlgorithmSettings:{}
@@ -707,7 +718,7 @@ module.exports = function (app) {
     minZoom: { type: 'integer', minimum: 0, maximum: 22, default: 4 }, maxZoom: { type: 'integer', minimum: 0, maximum: 22, default: 13 }, cacheSeconds: { type: 'integer', minimum: 0, maximum: 3600, default: 60 }, cacheEntries: { type: 'integer', minimum: 16, maximum: 10000, default: 512 }, requestTimeoutMs: { type: 'integer', minimum: 1000, maximum: 60000, default: 10000 }
   } })
 
-  plugin._test = { ADAPTERS, OBSERVATION_ADAPTERS, INFERENCE_ALGORITHMS, lightningChartRecord, lightningDensityChartRecords, lightningDensityChartId, KNOWN_PRODUCTS, tileBBox3857, normalizeTime, chartRecord, chartRecords, extensionManifest, splitTarget, parseTargets, DEFAULTS, tilesAroundPosition, playbackSlots, resolveSlot, playbackChartId, playbackChartName, hazardChartId, hazardChartName, hazardChartRecords, geometryBounds }
+  plugin._test = { ADAPTERS, OBSERVATION_ADAPTERS, INFERENCE_ALGORITHMS, lightningChartRecord, lightningDensityChartRecords, lightningDensityChartId, KNOWN_PRODUCTS, tileBBox3857, normalizeTime, chartRecord, chartRecords, extensionManifest, splitTarget, parseTargets, DEFAULTS, tilesAroundPosition, playbackSlots, resolveSlot, playbackChartId, playbackChartName, hazardChartId, hazardChartName, hazardChartRecords, geometryBounds, config: () => cfg, acquireOne, acquireCycle }
   return plugin
 }
 

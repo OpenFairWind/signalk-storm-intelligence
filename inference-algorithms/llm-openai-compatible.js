@@ -138,7 +138,7 @@ module.exports = {
     }
 
     return {
-      id: 'llm-openai-compatible', name: 'OpenAI-compatible LLM inference', version: '1', weight: settings.weight == null ? 0.5 : Math.max(0, Number(settings.weight) || 0),
+      id: 'llm-openai-compatible', name: 'OpenAI-compatible LLM inference', version: '1', weight: settings.weight == null ? 0.5 : Math.max(0, Math.min(5, Number.isFinite(Number(settings.weight)) ? Number(settings.weight) : 0)),
       description: module.exports.description,
       capabilities: { llm: true, remoteInference: true, openaiCompatible: true, structuredOutput: true, multimodalEvidence: true, candidateRefiner: true, detector: false },
       model: { interface: 'openai-compatible', protocol: client.protocol, baseUrl: client.baseUrl, model: client.model, outputSchema: 'storm_intelligence_assessment/1' },

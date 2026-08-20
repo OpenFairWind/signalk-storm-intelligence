@@ -27,9 +27,11 @@ An algorithm returns an array of normalized cells or `{cells:[...]}`. Cell ident
 Supported reference strategies are:
 
 - `max-severity`: never lowers an existing threat state; confidence uses the strongest estimate.
-- `weighted-confidence`: combines confidence using configured algorithm weights while preserving normalized threat semantics.
+- `weighted-confidence`: computes `sum(confidence × weight) / sum(weight)` once from all positive-weight contributions. A zero-weight algorithm still executes and remains in provenance but has no ensemble influence. If every contribution has zero weight, confidence is `0` and state is `normal`. The categorical state is the maximum severity among positive-weight contributors; this deliberately prevents confidence averaging from silently lowering a detector's safety state.
 
 Every algorithm contribution is recorded under threat evidence/provenance. A failing algorithm is isolated; other algorithms continue and run status records the failure.
+
+Each cycle also reports explicit health: `healthy`, `no-candidates`, `degraded`, or `unavailable`. `no-candidates` is authoritative only when at least one candidate-producing detector completed successfully. Refiners do not establish an all-clear. If no detector succeeds, callers must treat inference as unavailable and must not publish normal weather from the empty result.
 
 ## Safety rules
 

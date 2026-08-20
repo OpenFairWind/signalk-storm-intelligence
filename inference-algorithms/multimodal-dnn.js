@@ -27,7 +27,7 @@ module.exports = {
     const completenessPenalty = Number.isFinite(Number(settings.completenessPenalty)) ? Math.max(0,Math.min(1,Number(settings.completenessPenalty))) : 0.25
     const requireRadarCandidate = settings.requireRadarCandidate !== false
     return {
-      id:'multimodal-dnn', name:'Multimodal pretrained DNN', version:'1', weight:Number(settings.weight)||0.65,
+      id:'multimodal-dnn', name:'Multimodal pretrained DNN', version:'1', weight:Number.isFinite(Number(settings.weight))?Math.max(0,Math.min(5,Number(settings.weight))):0.65,
       description: module.exports.description,
       capabilities:{multimodal:true,pretrainedDnn:true,radar:true,lightning:true,onboardEnvironment:true,weatherApi:true,vesselRelative:true,candidateRefiner:true,detector:false},
       model:dnn.describe(),

@@ -122,7 +122,7 @@ for (const document of ['README.md', 'CHANGELOG.md']) {
   if (!pkg.files?.includes(document)) fail(`package files publish manifest must include root ${document}`)
 }
 
-const iconPath = path.resolve(ROOT, 'public', pkg.signalk?.appIcon || '')
+const iconPath = path.resolve(ROOT, pkg.signalk?.appIcon || '')
 if (!pkg.signalk?.displayName) fail('signalk.displayName is required')
 if (!pkg.signalk?.appIcon || !fs.existsSync(iconPath)) fail('signalk.appIcon must reference a published icon')
 else {

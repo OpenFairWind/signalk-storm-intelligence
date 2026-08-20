@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## 2.5.6 - 2026-08-20
+
+- Added explicit healthy, no-candidates, degraded and unavailable inference-cycle status; detector failure can no longer publish an all-clear.
+- Radar frames are marked processed only after storm processing succeeds, allowing retry from archived raw evidence.
+- Fixed zero inference/DNN weights and zero base uncertainty; weighted confidence is now cumulative and order-independent.
+- Added area-weighted polygon/multipolygon centroids and adaptive vessel-path interception refinement.
+- Fixed the packaged Signal K app-icon path and enabled Signal K integration coverage in CI.
+
 ## 2.5.5 - 2026-08-19
 
 - Make root `README.md` and `CHANGELOG.md` explicit npm publish-manifest entries and enforce their inclusion in release-quality checks.

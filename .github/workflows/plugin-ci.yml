@@ -17,4 +17,4 @@ jobs:
       test-command: npm run quality
       node-versions: '["22", "24"]'
       enable-armv7: true
-      enable-signalk-integration: false
+      enable-signalk-integration: true
