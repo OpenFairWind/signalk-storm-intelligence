@@ -8,6 +8,8 @@
 
 The package carries both `signalk-node-server-plugin` and `signalk-webapp` keywords so the same installed package supplies the runtime and its operational monitor.
 
+The Webapps dashboard icon is served from `public/assets/storm-intelligence-icon.png`. An identical package-root copy is retained for App Store metadata because the two Signal K consumers resolve `signalk.appIcon` from different base directories.
+
 ## Purpose
 
 The WebApp is an operations/status display. It is intentionally distinct from the Freeboard-SK extension. Freeboard is the geospatial operational map; the companion WebApp answers:

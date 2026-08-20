@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 2.5.7 - 2026-08-20
+
+- Fixed the installed Webapps dashboard icon while preserving the App Store icon by publishing the canonical asset at both required Signal K path bases.
+
 ## 2.5.6 - 2026-08-20
 
 - Added explicit healthy, no-candidates, degraded and unavailable inference-cycle status; detector failure can no longer publish an all-clear.

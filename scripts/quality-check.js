@@ -123,6 +123,7 @@ for (const document of ['README.md', 'CHANGELOG.md']) {
 }
 
 const iconPath = path.resolve(ROOT, pkg.signalk?.appIcon || '')
+const webappIconPath = path.resolve(ROOT, 'public', pkg.signalk?.appIcon || '')
 if (!pkg.signalk?.displayName) fail('signalk.displayName is required')
 if (!pkg.signalk?.appIcon || !fs.existsSync(iconPath)) fail('signalk.appIcon must reference a published icon')
 else {
@@ -130,6 +131,8 @@ else {
   const icon = fs.readFileSync(iconPath)
   if (icon.readUInt32BE(16) !== icon.readUInt32BE(20)) fail('store icon must be square')
 }
+if (!pkg.signalk?.appIcon || !fs.existsSync(webappIconPath)) fail('signalk.appIcon must also resolve relative to public for the Webapps dashboard')
+else if (fs.existsSync(iconPath) && !fs.readFileSync(iconPath).equals(fs.readFileSync(webappIconPath))) fail('App Store and Webapps dashboard icons must be identical')
 
 if (!Array.isArray(pkg.signalk?.screenshots) || pkg.signalk.screenshots.length < 1 || pkg.signalk.screenshots.length > 6) fail('signalk.screenshots must contain 1-6 package-relative images')
 for (const screenshot of pkg.signalk?.screenshots || []) checkStoreImage(path.resolve(ROOT, screenshot), 1280, 800, 500 * 1024)

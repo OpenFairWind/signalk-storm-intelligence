@@ -1,6 +1,6 @@
 {
   "name": "signalk-storm-intelligence",
-  "version": "2.5.6",
+  "version": "2.5.7",
   "description": "Signal K severe-weather decision support with multisensor storm tracking, vessel-relative hazards, radar overlays, offline replay, and a read-only operational WebApp.",
   "main": "index.js",
   "type": "commonjs",
@@ -38,6 +38,7 @@
     "CHANGELOG.md",
     "LICENSE",
     "README.md",
+    "assets",
     "docs",
     "!docs/board-proposal-notes.md",
     "index.js",
@@ -77,7 +78,7 @@
   "signalk-plugin-enabled-by-default": false,
   "signalk": {
     "displayName": "Storm Intelligence",
-    "appIcon": "./public/assets/storm-intelligence-icon.png",
+    "appIcon": "./assets/storm-intelligence-icon.png",
     "screenshots": [
       "./docs/screenshots/operational-dashboard.jpg"
     ],

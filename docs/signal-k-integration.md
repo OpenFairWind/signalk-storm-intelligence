@@ -73,7 +73,7 @@ Default algorithms preserve the safety rule that environmental corroboration alo
 
 The companion WebApp is classified as `signalk-webapp` and reads a consolidated `/operational` plugin endpoint. The route is registered with readonly access.
 
-Its `signalk.appIcon` package metadata is resolved relative to the published `public` directory, following the Signal K WebApp contract. The bundled square PNG is used by both the server Webapps list and App Store catalogue.
+Signal K has two icon consumers with different bases: the server Webapps list resolves `signalk.appIcon` relative to `public`, while the App Store resolves it relative to the package root. The package therefore publishes the same canonical square PNG at both `assets/storm-intelligence-icon.png` and `public/assets/storm-intelligence-icon.png`, with metadata set to `./assets/storm-intelligence-icon.png`.
 
 The WebApp must remain non-mutating unless a future security/UX redesign explicitly introduces controlled actions.
 
