@@ -1,7 +1,5 @@
 # Changelog
 
-- Expanded the Freeboard-SK storm-cell overlay with explicit cell bounding boxes, evaluated history tracks, forecast envelopes, and vessel-relative projected impact markers labelled with UTC time and severity.
-
 ## Unreleased
 
 ## 2.5.9 - 2026-08-21
@@ -75,8 +73,9 @@
 - Hardened inference/observation registries against duplicate/mismatched runtime IDs and removed duplicated threat-merge computation.
 - Added regression tests for registry identity invariants.
 
-## 2.3.0
+## 2.3.0 - 2026-08-21
 
+- Expanded the Freeboard-SK storm-cell overlay with explicit cell bounding boxes, evaluated history tracks, forecast envelopes, and vessel-relative projected impact markers labelled with UTC time and severity.
 - Added a companion read-only Signal K WebApp in `public/index.html`, available at `/signalk-storm-intelligence/` and classified with the `signalk-webapp` keyword.
 - Added `/operational`, a read-only consolidated operational API for runtime/component health and approaching storm cells.
 - Added ranked approaching-cell summaries with impact/closest-approach ETA, range, confidence, source, uncertainty and transparent 0-100 operational risk score.
