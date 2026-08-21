@@ -301,11 +301,11 @@ module.exports = function (app) {
     const count = Math.max(1, Math.min(72, Number(cfg.hazardOverlaySlots) || 1))
     activeHazardSlot = hazardSequence % count
     hazardSequence++
-    hazardSnapshots.set(activeHazardSlot, { time: frameTime || new Date().toISOString(), cells: cells.map(c => ({ ...c })) })
+    hazardSnapshots.set(activeHazardSlot, { time: frameTime || new Date().toISOString(), cells: cells.map(c => ({ ...c })), vessel: vessel() })
   }
 
   function currentHazards() {
-    return { source: cfg.stormSource, state: lastAlarm, activeSlot: activeHazardSlot, chartId: hazardChartId(activeHazardSlot), chartName: hazardChartName(activeHazardSlot), predictionMinutes: cfg.hazardPredictionMinutes, ...hazardsFromCells(cells, cfg.hazardPredictionMinutes) }
+    return { source: cfg.stormSource, state: lastAlarm, activeSlot: activeHazardSlot, chartId: hazardChartId(activeHazardSlot), chartName: hazardChartName(activeHazardSlot), predictionMinutes: cfg.hazardPredictionMinutes, ...hazardsFromCells(cells, cfg.hazardPredictionMinutes, { vessel: vessel() }) }
   }
 
   function hazardOverlayStatus() {
@@ -477,7 +477,7 @@ module.exports = function (app) {
         const slot=Number(req.params.slot),z=Number(req.params.z),x=Number(req.params.x),y=Number(req.params.y)
         if (![slot,z,x,y].every(Number.isInteger) || slot < 0 || slot >= cfg.hazardOverlaySlots || z < cfg.minZoom || z > cfg.maxZoom) return res.status(400).end()
         const snap=hazardSnapshots.get(slot)
-        const b=renderHazardTile(snap?.cells || [],z,x,y,{predictionMinutes:cfg.hazardPredictionMinutes})
+        const b=renderHazardTile(snap?.cells || [],z,x,y,{predictionMinutes:cfg.hazardPredictionMinutes,vessel:snap?.vessel,evaluatedAt:snap?.time})
         res.set('Content-Type','image/png'); res.set('Cache-Control','public, max-age=15'); res.send(b)
       } catch (e) { res.status(500).end() }
     })

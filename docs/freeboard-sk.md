@@ -22,9 +22,11 @@ Frame slots are a compatibility technique, not the preferred future API. A gener
 
 ## 4. Hazard overlay
 
-Normalized storm geometry is rasterized into transparent PNG chart tiles for current Freeboard compatibility. Rendering includes current polygons, state styling, motion tracks and predicted envelopes.
+Normalized storm geometry is rasterized into transparent PNG chart tiles for current Freeboard compatibility. Rendering includes the recognized cell polygon and bounding box, its evaluated observation-track history, forecast cell paths/envelopes, and—when the vessel path is projected to intersect—a dashed path from `self.navigation.position` to a marked possible-impact point. The impact marker is labelled with its projected UTC date/time and the cell severity.
 
-The normalized vector hazard resource remains the authoritative data representation. The raster layer is only a presentation adapter.
+The vessel projection uses `navigation.speedOverGround` and `navigation.courseOverGroundTrue` when available. An impact is a kinematic path-intersection estimate, not a guaranteed event or a calibrated probability. No impact marker is shown unless the normalized path evaluation reports an intersection.
+
+The normalized vector hazard resource remains the authoritative data representation. Each feature exposes its `bbox` and timestamped `properties.impact` metadata, while the collection records the vessel state used for that evaluation. The raster layer is only a presentation adapter.
 
 ## 5. Lightning overlay
 

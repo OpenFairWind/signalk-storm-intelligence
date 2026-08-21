@@ -1,5 +1,7 @@
 # Changelog
 
+- Expanded the Freeboard-SK storm-cell overlay with explicit cell bounding boxes, evaluated history tracks, forecast envelopes, and vessel-relative projected impact markers labelled with UTC time and severity.
+
 ## Unreleased
 
 ## 2.5.9 - 2026-08-21

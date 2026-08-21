@@ -152,7 +152,7 @@ test('Freeboard panel playback drives only standard chart and extension-state ho
   assert.doesNotMatch(html,/OpenLayers|ol\.Map|document\.querySelector\([^)]*freeboard/i)
 })
 
-const { destination, translateGeometry, cellToHazard, renderHazardTile, geometryBounds } = require('../lib/hazard-overlay')
+const { destination, translateGeometry, cellToHazard, hazardsFromCells, renderHazardTile, geometryBounds, impactForCell } = require('../lib/hazard-overlay')
 
 test('hazard normalization predicts future centroid and translated polygon',()=>{
   const cell={id:'c1',state:'warn',severity:3,geometry:{type:'Polygon',coordinates:[[[14,40],[14.02,40],[14.02,40.02],[14,40.02],[14,40]]]},centroid:[14.01,40.01],motion:{east:10,north:0,speed:10,course:90},distanceMeters:10000,cpa:{dcpaMeters:5000,tcpaSec:900}}
@@ -168,6 +168,20 @@ test('hazard tile renderer creates transparent PNG with plotted storm geometry',
   const png=renderHazardTile([cell],6,34,24,{predictionMinutes:[15,30]})
   assert.deepEqual([...png.subarray(0,8)],[137,80,78,71,13,10,26,10])
   assert.ok(png.length>100)
+})
+
+test('hazards expose bounds and a timestamped vessel-relative impact',()=>{
+  const cell={id:'c-impact',state:'alarm',severity:4,geometry:{type:'Polygon',coordinates:[[[14,40],[14.02,40],[14.02,40.02],[14,40.02],[14,40]]]},centroid:[14.01,40.01],motion:{east:2,north:0,speed:2},pathThreat:{intersects:true,interceptSec:600}}
+  const vessel={position:{longitude:13.9,latitude:40.01},sog:5,cog:Math.PI/2}
+  const evaluatedAt='2026-08-21T10:00:00.000Z'
+  const impact=impactForCell(cell,vessel,evaluatedAt)
+  assert.equal(impact.at,'2026-08-21T10:10:00.000Z')
+  assert.equal(impact.severity,4)
+  assert.ok(impact.position[0]>vessel.position.longitude)
+  const hazards=hazardsFromCells([cell],[15],{vessel,evaluatedAt})
+  assert.deepEqual(hazards.features[0].bbox,[14,40,14.02,40.02])
+  assert.equal(hazards.features[0].properties.impact.at,impact.at)
+  assert.deepEqual(hazards.vessel,vessel)
 })
 
 test('hazard chart resources use rolling slots and public weather-radar tile route',()=>{
