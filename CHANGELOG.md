@@ -73,6 +73,11 @@
 - Hardened inference/observation registries against duplicate/mismatched runtime IDs and removed duplicated threat-merge computation.
 - Added regression tests for registry identity invariants.
 
+## 2.3.1 - 2026-08-21
+
+- Published the current storm-cell bounding-box, evaluated-track, forecast-envelope and vessel-relative impact-overlay implementation as the `2.3.1` patch release.
+- Updated package metadata, runtime version reporting, release documentation and deterministic version coverage consistently.
+
 ## 2.3.0 - 2026-08-21
 
 - Expanded the Freeboard-SK storm-cell overlay with explicit cell bounding boxes, evaluated history tracks, forecast envelopes, and vessel-relative projected impact markers labelled with UTC time and severity.
