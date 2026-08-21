@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 2.5.9 - 2026-08-21
+
+- Fixed Radar-DPC VMI/SRI/accumulated-rain overlays to render the current v2 time-qualified WebP data tiles instead of associating new REST timestamps with divergent legacy-WMS imagery; transport, decoding and palettes remain isolated in the Radar-DPC adapter.
+- Migrated the independent Radar-DPC lightning event-map adapter from legacy WMS to the current v2 `LGT` binary frames, preserving map visualization without fabricating per-event timestamps for inference.
+- Fixed Freeboard-SK lightning-layer activation state while keeping radar, lightning and inference providers independently pluggable.
+
 ## 2.5.8 - 2026-08-21
 
 - Separated read-only operational routes from admin-only acquisition and prefetch operations, with truthful manual-operation responses and single-flight scheduling.

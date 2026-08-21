@@ -4,15 +4,45 @@ const test = require('node:test')
 const assert = require('node:assert/strict')
 const { DpcProvider } = require('../lib/dpc-provider')
 const { parseHrdBinary } = require('../lib/hrd-parser')
+const { sourceTile, v2TileUrl, renderRgba, encodePng, colorFor } = require('../lib/dpc-v2-raster')
 
 function provider() {
   return new DpcProvider({
     dpcApiBase: 'https://radar-api.protezionecivile.it',
+    dpcWebpTileBase: 'https://tiles.example',
     dpcHrdBinaryBase: 'https://hrd.example',
     dpcOrigin: 'https://radar.protezionecivile.it',
     requestTimeoutMs: 1000
   })
 }
+
+test('Radar-DPC v2 URL uses the immutable UTC frame and provider-native XYZ hierarchy',()=>{
+  const direct=v2TileUrl('https://tiles.example','VMI','2026-08-21T06:20:00.000Z',{z:6,x:33,y:23})
+  assert.equal(direct.url,'https://tiles.example/VMI/2026/08/21/0620/6/33/23/vmi.webp')
+  assert.deepEqual(direct.tile,{z:6,x:33,y:23,scale:1,offsetX:0,offsetY:0})
+  const overzoom=v2TileUrl('https://tiles.example','SRI','2026-08-21T06:24:59.000Z',{z:9,x:269,y:186})
+  assert.equal(overzoom.url,'https://tiles.example/SRI/2026/08/21/0620/7/67/46/sri.webp')
+  assert.deepEqual(overzoom.tile,{z:7,x:67,y:46,scale:4,offsetX:1,offsetY:2})
+  assert.throws(()=>v2TileUrl('https://tiles.example','VMI','invalid',{z:7,x:67,y:46}),/valid UTC frame time/)
+})
+
+test('Radar-DPC v2 colourization produces deterministic transparent PNG-compatible RGBA',()=>{
+  const image={width:256,height:256,data:new Uint8Array(256*256*4)}
+  image.data.fill(255)
+  const rgba=renderRgba('VMI',image,sourceTile(7,67,46))
+  assert.equal(rgba.length,256*256*4)
+  assert.deepEqual([...rgba.slice(0,4)],[255,67,0,204])
+  const png=encodePng(256,256,rgba)
+  assert.deepEqual([...png.slice(0,8)],[137,80,78,71,13,10,26,10])
+  assert.equal(png.readUInt32BE(16),256)
+  assert.equal(png.readUInt32BE(20),256)
+  assert.deepEqual(colorFor('SRI',0).slice(3),[0])
+})
+
+test('Radar-DPC v2 rejects malformed coordinates at the provider boundary',()=>{
+  assert.throws(()=>sourceTile(7,-1,46),/non-negative integer XYZ/)
+  assert.throws(()=>sourceTile(7,67.5,46),/non-negative integer XYZ/)
+})
 
 function response(overrides={}) {
   return {ok:true,status:200,headers:{get:()=> 'application/octet-stream'},...overrides}

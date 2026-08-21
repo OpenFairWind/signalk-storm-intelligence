@@ -1,6 +1,6 @@
 {
   "name": "signalk-storm-intelligence",
-  "version": "2.5.8",
+  "version": "2.5.9",
   "description": "Signal K severe-weather decision support with multisensor storm tracking, vessel-relative hazards, radar overlays, offline replay, and a read-only operational WebApp.",
   "main": "index.js",
   "type": "commonjs",
@@ -52,6 +52,7 @@
     "test"
   ],
   "dependencies": {
+    "@jsquash/webp": "^1.5.0",
     "adm-zip": "^0.6.0",
     "proj4": "^2.19.10",
     "shapefile": "^0.6.6"
@@ -59,7 +60,7 @@
   "scripts": {
     "test": "node --test",
     "test:coverage": "node --test --experimental-test-coverage --test-coverage-lines=85 --test-coverage-branches=60",
-    "lint": "node --check index.js && node --check public/dashboard.js && node --check lib/version.js && node --check lib/inference-engine.js && node --check lib/inference-registry.js && node --check lib/inference-algorithm-contract.js && node --check inference-algorithms/kinematic-polygon.js && node --check inference-algorithms/multisensor-evidence.js && node --check inference-algorithms/multimodal-dnn.js && node --check inference-algorithms/llm-openai-compatible.js && node --check lib/openai-compatible-client.js && node --check lib/multimodal-features.js && node --check lib/pretrained-dnn.js && node --check scripts/train-reference-dnn.js && node --check scripts/quality-check.js && node --check lib/provider-registry.js && node --check lib/provider-contract.js && node --check lib/observation-provider-registry.js && node --check lib/observation-provider-contract.js && node --check lib/lightning-engine.js && node --check lib/lightning-overlay.js && node --check lib/environment-fusion.js && node --check lib/weather-api-fusion.js && node --check observation-providers/http-json-lightning.js && node --check observation-providers/blitzortung-lightning.js && node --check observation-providers/dpc-ltg-density.js && node --check lib/storage.js && node --check lib/tile-store.js && node --check lib/playback.js && node --check lib/storm-engine.js && node --check lib/hrd-parser.js && node --check lib/hazard-overlay.js && node --check lib/rainviewer-provider.js && node --check providers/rainviewer.js",
+    "lint": "node --check index.js && node --check public/dashboard.js && node --check lib/version.js && node --check lib/inference-engine.js && node --check lib/inference-registry.js && node --check lib/inference-algorithm-contract.js && node --check inference-algorithms/kinematic-polygon.js && node --check inference-algorithms/multisensor-evidence.js && node --check inference-algorithms/multimodal-dnn.js && node --check inference-algorithms/llm-openai-compatible.js && node --check lib/openai-compatible-client.js && node --check lib/multimodal-features.js && node --check lib/pretrained-dnn.js && node --check scripts/train-reference-dnn.js && node --check scripts/quality-check.js && node --check lib/provider-registry.js && node --check lib/provider-contract.js && node --check lib/observation-provider-registry.js && node --check lib/observation-provider-contract.js && node --check lib/lightning-engine.js && node --check lib/lightning-overlay.js && node --check lib/environment-fusion.js && node --check lib/weather-api-fusion.js && node --check observation-providers/http-json-lightning.js && node --check observation-providers/blitzortung-lightning.js && node --check observation-providers/dpc-ltg-density.js && node --check lib/storage.js && node --check lib/tile-store.js && node --check lib/playback.js && node --check lib/storm-engine.js && node --check lib/hrd-parser.js && node --check lib/hazard-overlay.js && node --check lib/dpc-v2-raster.js && node --check lib/rainviewer-provider.js && node --check providers/rainviewer.js",
     "check": "npm run lint && npm run test:coverage",
     "pack:dry": "npm pack --dry-run",
     "live-check": "node scripts/live-check.js",

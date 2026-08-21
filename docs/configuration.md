@@ -18,7 +18,7 @@ Provider-qualified radar products use `provider:PRODUCT`, preventing collisions 
 
 Configuring a provider-qualified layer/target can implicitly require that provider to be instantiated; the runtime validates product existence against discovered adapter metadata.
 
-Radar-DPC keeps its REST, WMS and HRD binary-product endpoints in the adapter-owned `providerSettings.radar-dpc` namespace. HRD discovery uses the latest VMI observation only as a bounded time index, then verifies the exact HRD object before reporting that timestamp; unavailable frames are not silently substituted.
+Radar-DPC keeps its REST, v2 WebP tile, legacy WMS and HRD binary-product endpoints in the adapter-owned `providerSettings.radar-dpc` namespace. VMI, SRI and accumulated-rain overlays use immutable, time-qualified Radar-DPC v2 WebP data tiles and are decoded into the normalized PNG chart contract with provider-owned palettes. They do not silently fall back to the legacy WMS because the legacy and v2 rendering pipelines may publish different pixels for the same timestamp. Products not published through the documented v2 tile client retain their existing WMS transport inside the adapter. HRD discovery uses the latest VMI observation only as a bounded time index, then verifies the exact HRD object before reporting that timestamp; unavailable frames are not silently substituted.
 
 ## 3. Background acquisition
 
@@ -41,6 +41,8 @@ Threshold changes alter operational behavior and should be versioned/frozen in s
 ## 7. Lightning
 
 Lightning configuration selects observation providers, query lookback/radius, map visibility and proximity alarm thresholds. `lightningAssociationRadiusNm` controls how far a point strike may be from an existing storm-cell geometry and still corroborate that cell; it never creates a cell. `lightningEvidenceWeight` bounds the confidence contribution from associated strikes. Provider-specific credentials/endpoints live under the observation-provider settings namespace.
+
+The Radar-DPC v2 lightning event-map adapter consumes the current `LGT` binary frame independently of the radar provider adapter. DPC does not document trustworthy per-event timestamps in that frame, so the adapter provides a plotter density/event-map capability but deliberately does not emit normalized point strikes into inference. Point-based lightning fusion requires a separately configured provider that supplies trustworthy event timestamps.
 
 ## 8. Onboard environmental evidence
 

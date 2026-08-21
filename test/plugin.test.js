@@ -423,7 +423,7 @@ test('Blitzortung adapter validates second independent point-strike provider',as
 
 test('observation contract accepts density-only providers',()=>{const {assertObservationProvider,describeObservationProvider}=require('../lib/observation-provider-contract');const p=assertObservationProvider({id:'density',name:'density',densityTile(){}});assert.equal(describeObservationProvider(p).capabilities.density,true);assert.equal(describeObservationProvider(p).capabilities.points,false)})
 
-test('DPC LTG adapter exposes a density WMS tile without pretending point strikes',async()=>{const a=require('../observation-providers/dpc-ltg-density'),p=a.create({common:{requestTimeoutMs:1000},settings:a.defaults}),old=global.fetch;let url;global.fetch=async u=>{url=String(u);return{ok:true,status:200,headers:{get:()=> 'image/png'},arrayBuffer:async()=>Uint8Array.from([137,80,78,71]).buffer}};try{const b=await p.densityTile({bbox3857:[1,2,3,4],size:256,time:'2026-08-18T01:00:00Z'});assert.equal(b[0],137);assert.ok(url.includes('LAYERS=radar%3Altg'));assert.equal(p.capabilities.points,false);assert.equal(p.densityDescriptor().quantitative,false)}finally{global.fetch=old}})
+test('DPC LTG adapter renders the current v2 binary frame without pretending point observations',async()=>{const a=require('../observation-providers/dpc-ltg-density'),p=a.create({common:{requestTimeoutMs:1000},settings:a.defaults}),old=global.fetch,requests=[];const bin=Buffer.alloc(9);bin[0]=2;bin.writeUInt16BE(1,1);bin.writeUInt16BE(32768,3);bin.writeUInt16BE(0,5);bin[7]=0x90;bin[8]=0;global.fetch=async u=>{requests.push(String(u));if(requests.length===1)return{ok:true,status:200,headers:{get:()=> 'application/json'},json:async()=>({lastProducts:[{time:1787014800000}]})};return{ok:true,status:200,headers:{get:()=> 'application/octet-stream'},arrayBuffer:async()=>bin.buffer.slice(bin.byteOffset,bin.byteOffset+bin.byteLength)}};try{const b=await p.densityTile({z:5,x:16,y:11,size:256});assert.equal(b[0],137);assert.match(requests[0],/findLastProductByType\?type=VMI&lang=it/);assert.equal(requests[1],'https://s3-prod-dpc-radar-webp-cache.s3.eu-south-1.amazonaws.com/LGT/lgt_5min_1787014800000.bin');assert.equal(p.capabilities.points,false);assert.equal(p.densityDescriptor().quantitative,false)}finally{global.fetch=old}})
 
 test('observation registry discovers point and density lightning providers independently',()=>{const {discoverObservationAdapters}=require('../lib/observation-provider-registry');const a=discoverObservationAdapters(path.join(__dirname,'..','observation-providers'));assert.ok(a.has('http-json-lightning'));assert.ok(a.has('blitzortung-lightning'));assert.ok(a.has('dpc-ltg-density'))})
 
@@ -506,7 +506,7 @@ test('v2 identity exposes stormIntelligence primary resource with deprecated wea
   const plugin=makePlugin(app)
   assert.equal(plugin.id,'signalk-storm-intelligence')
   assert.equal(plugin.name,'Storm Intelligence')
-  assert.equal(plugin.version,'2.5.8')
+  assert.equal(plugin.version,'2.5.9')
   plugin.start({backgroundEnabled:false,displayLayers:['radar-dpc:VMI']})
   const primary=await ps.find(x=>x.type==='stormIntelligence').methods.listResources()
   const legacy=await ps.find(x=>x.type==='weatherRadar').methods.listResources()
@@ -653,7 +653,7 @@ test('operational routes are read-only and administrative operations require ele
   assert.deepEqual(accessModes,['readonly']);assert.equal(typeof routes.readonly['/operational'],'function');assert.equal(routes.readonly['POST /acquire'],undefined);assert.equal(typeof routes.admin['POST /acquire'],'function')
   let payload,statusCode=200;const res={json:x=>{payload=x;return res},status:n=>{statusCode=n;return res},set(){return res},send(){return res}}
   await routes.readonly['/operational']({},res)
-  assert.equal(statusCode,200);assert.equal(payload.readOnly,true);assert.ok(Array.isArray(payload.components));assert.ok(Array.isArray(payload.approachingCells));assert.equal(payload.runtime.version,'2.5.8');assert.match(payload.semantics.risk,/not a probability/i)
+  assert.equal(statusCode,200);assert.equal(payload.readOnly,true);assert.ok(Array.isArray(payload.components));assert.ok(Array.isArray(payload.approachingCells));assert.equal(payload.runtime.version,'2.5.9');assert.match(payload.semantics.risk,/not a probability/i)
   plugin.stop()
 })
 
