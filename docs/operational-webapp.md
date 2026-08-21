@@ -34,6 +34,10 @@ GET /plugins/signalk-storm-intelligence/operational
 
 The route is registered through the plugin's read-only router access. Normal Signal K authentication/readonly-access policy therefore applies.
 
+Side-effecting `POST /acquire` and `POST /prefetch` operations are registered separately with Signal K administrative access and are unavailable through the read-only router. Manual acquisition performs one real cycle even when background scheduling is disabled, and failures return non-success HTTP status codes with component-attributed results.
+
+When own-ship position is missing, vessel-relative lightning evaluation is reported as `unavailable`, not `normal`. Recent observations remain retained according to the configured lookback, and evaluation resumes when position recovers.
+
 ## Approaching-cell semantics
 
 An entry is considered approaching when at least one of the normalized threat indicators says the cell is relevant within the configured inference horizon: projected polygon/path intersection, closing CPA, or a finite projected minimum-separation time within the horizon.

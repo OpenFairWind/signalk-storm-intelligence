@@ -44,6 +44,8 @@ Lightning configuration selects observation providers, query lookback/radius, ma
 
 ## 8. Onboard environmental evidence
 
+Onboard values are accepted as fresh corroborating evidence only when a source timestamp is available and their age is at most `onboardEnvironmentMaxAgeSeconds` (the boundary is inclusive). Missing timestamps are reported explicitly and handled conservatively; stale values remain visible in status metadata but do not contribute fresh evidence.
+
 Onboard environment controls include history length, maximum accepted sample age (`onboardEnvironmentMaxAgeSeconds`) and maximum confidence/evidence contribution. Local environmental signals remain bounded corroboration in the default algorithms.
 
 ## 9. Signal K Weather API evidence

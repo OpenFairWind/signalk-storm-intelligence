@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 2.5.8 - 2026-08-21
+
+- Separated read-only operational routes from admin-only acquisition and prefetch operations, with truthful manual-operation responses and single-flight scheduling.
+- Added component-specific prefetch/lightning error recovery and explicit lightning unavailability when own-ship position is missing.
+- Enforced timestamp-aware onboard environment freshness and made global storm geometry antimeridian-safe.
+- Completed and automatically validates the OpenAPI contract, strengthened lifecycle cleanup and expanded hardening regression coverage.
+
 ## 2.5.7 - 2026-08-20
 
 - Fixed the installed Webapps dashboard icon while preserving the App Store icon by publishing the canonical asset at both required Signal K path bases.

@@ -164,7 +164,7 @@ function extensionManifest(pluginId, version) {
 module.exports = function (app) {
   const plugin = { id: 'signalk-storm-intelligence', name: 'Storm Intelligence', version: PACKAGE_VERSION }
   let cfg = { ...DEFAULTS }, providers = new Map(), observationProviders = new Map(), inferenceAlgorithms = new Map(), inferenceEngine, cache = makeCache(DEFAULTS.cacheEntries), charts = {}, storage, tileStore, environmentFusion, weatherApiFusion
-  let timer = null, running = false, busy = false, lastAcquired = {}, lastPrefetched = {}, cells = [], lightningStrikes = [], lightningState = 'normal', lightningMessage = '', environmentContext = {available:false}, weatherApiContext = {available:false}, hazardSnapshots = new Map(), hazardSequence = 0, activeHazardSlot = 0, lastAlarm = 'normal', lastAlarmText = '', lastError = null, assetsMounted = false
+  let timer = null, startupTimer = null, running = false, busy = false, lastAcquired = {}, lastPrefetched = {}, cells = [], lightningStrikes = [], lightningState = 'normal', lightningMessage = '', environmentContext = {available:false}, weatherApiContext = {available:false}, hazardSnapshots = new Map(), hazardSequence = 0, activeHazardSlot = 0, lastAlarm = 'normal', lastAlarmText = '', lastError = null, assetsMounted = false
   const activeErrors = new Map()
   const syncLastError = () => { lastError = [...activeErrors.values()].at(-1)?.message || null }
   const err = (message, component = 'runtime') => { activeErrors.set(component, { message, at: new Date().toISOString() }); syncLastError(); app.error?.(message) }
@@ -438,6 +438,7 @@ module.exports = function (app) {
       onboardEnvironment: environmentContext,
       weatherObservations: weatherApiContext,
       inference: inferenceEngine?.describe() || null,
+      errors: Object.fromEntries(activeErrors),
       lastError
     }
   }
@@ -545,7 +546,7 @@ module.exports = function (app) {
         try {
           const b = await fetchTileNetwork(t.providerId, t.product, tile.z, tile.x, tile.y, latest.time)
           await tileStore.put(t.providerId, t.product, latest.epochMs, tile.z, tile.x, tile.y, b); stored++
-        } catch (e) { failed++; if (failed === 1) err(`Prefetch ${target}: ${e.message}`) }
+        } catch (e) { failed++; if (failed === 1) err(`Prefetch ${target}: ${e.message}`, `prefetch:${target}`) }
       }
     })
     await Promise.all(workers)
@@ -557,7 +558,7 @@ module.exports = function (app) {
     const results = []
     if (!cfg.prefetchEnabled) return results
     for (const target of cfg.prefetchTargets) {
-      try { results.push(await prefetchOne(target)); recovered(`prefetch:${target}`) } catch (e) { err(`Prefetch ${target}: ${e.message}`, `prefetch:${target}`); results.push({ target, error: e.message }) }
+      try { const result=await prefetchOne(target);results.push(result);if(!result.failed)recovered(`prefetch:${target}`) } catch (e) { err(`Prefetch ${target}: ${e.message}`, `prefetch:${target}`); results.push({ target, error: e.message }) }
     }
     await tileStore?.recycle()
     return results
@@ -565,10 +566,10 @@ module.exports = function (app) {
 
   async function lightningCycle(){
     if(!cfg.lightningEnabled)return
-    const pos=vessel().position;if(!pos)return
+    const pos=vessel().position;if(!pos){const st='unavailable',msg='Lightning vessel-relative threat unavailable: own-ship position is missing';if(st!==lightningState||msg!==lightningMessage){lightningState=st;lightningMessage=msg;notifyPath(cfg.lightningNotificationPath,st,msg,{reason:'no-position',observationCount:lightningStrikes.length})}return}
     const dlat=cfg.lightningQueryRadiusNm*NM/111320,dlon=dlat/Math.max(.1,Math.cos(Number(pos.latitude)*Math.PI/180));const bounds=[Number(pos.longitude)-dlon,Number(pos.latitude)-dlat,Number(pos.longitude)+dlon,Number(pos.latitude)+dlat]
     const now=Date.now(),since=new Date(now-cfg.lightningLookbackMinutes*60000).toISOString(),until=new Date(now).toISOString(),all=[]
-    for(const [id,p] of observationProviders){if(typeof p.observations!=='function')continue;try{const rows=await p.observations({type:'lightning',bounds,since,until,vessel:vessel()});for(const r of rows||[])all.push({...r,provider:r.provider||id})}catch(e){err(`Lightning ${id}: ${e.message}`)}}
+    for(const [id,p] of observationProviders){if(typeof p.observations!=='function')continue;try{const rows=await p.observations({type:'lightning',bounds,since,until,vessel:vessel()});for(const r of rows||[])all.push({...r,provider:r.provider||id});recovered(`lightning:${id}`)}catch(e){err(`Lightning ${id}: ${e.message}`,`lightning:${id}`)}}
     const seen=new Set();lightningStrikes=all.filter(r=>{const k=`${r.provider}:${r.id}`;if(seen.has(k))return false;seen.add(k);const t=new Date(r.time).getTime(),age=now-t;return Number.isFinite(t)&&age>=0&&age<=cfg.lightningLookbackMinutes*60000}).sort((a,b)=>new Date(b.time)-new Date(a.time))
     const summary=lightningSummary(lightningStrikes,pos,now),nearest=(summary.nearestStrikeMeters??Infinity)/NM
     let st='normal';if(summary.count30min>=cfg.lightningMinStrikes&&nearest<=cfg.lightningAlarmNm)st='alarm';else if(summary.count30min>=cfg.lightningMinStrikes&&nearest<=cfg.lightningWarningNm)st='warn'
@@ -577,24 +578,30 @@ module.exports = function (app) {
   }
 
   async function acquireCycle() {
-    if (!running || busy || !cfg.backgroundEnabled) return
+    if (!running) return {attempted:false,reason:'stopped',errors:[]}
+    if (busy) return {attempted:false,reason:'busy',errors:[]}
     busy = true
+    const results=[],errors=[]
     try {
       if(cfg.onboardEnvironmentEnabled) environmentContext=environmentFusion.sample(app)
       if(cfg.weatherApiObservationsEnabled){const pos=vessel().position;weatherApiContext=pos?await weatherApiFusion.sample(app,pos):{available:false,reason:'no-position',samples:[]}}
       await lightningCycle()
-      for (const target of cfg.acquisitionTargets) try { await acquireOne(target); recovered(`acquisition:${target}`) } catch (e) { err(`Acquisition ${target}: ${e.message}`, `acquisition:${target}`) }
-      await prefetchCycle()
+      for (const target of cfg.acquisitionTargets) try { const acquired=await acquireOne(target);results.push({target,acquired});recovered(`acquisition:${target}`) } catch (e) { err(`Acquisition ${target}: ${e.message}`, `acquisition:${target}`);errors.push({component:`acquisition:${target}`,error:e.message}) }
+      const prefetchResults=await prefetchCycle()
+      for(const result of prefetchResults)if(result.error||result.failed)errors.push({component:`prefetch:${result.target}`,error:result.error||`${result.failed} tile requests failed`})
       await storage.recycle()
       status(`Weather radar active; ${cfg.displayLayers.length} overlays; ${providers.size} providers; storm ${lastAlarm}`)
+      return {attempted:true,ok:errors.length===0,results,prefetchResults,errors}
     } finally { busy = false }
   }
+
+  async function scheduledAcquisitionCycle(){if(!cfg.backgroundEnabled)return{attempted:false,reason:'background-disabled',errors:[]};return acquireCycle()}
 
   function schedule() {
     if (timer) clearInterval(timer)
     if (cfg.backgroundEnabled) {
-      timer = setInterval(() => acquireCycle().catch(e => err(e.message)), cfg.pollSeconds * 1000); timer.unref?.()
-      const t = setTimeout(() => acquireCycle().catch(e => err(e.message)), 100); t.unref?.()
+      timer = setInterval(() => scheduledAcquisitionCycle().catch(e => err(e.message,'acquisition:scheduler')), cfg.pollSeconds * 1000); timer.unref?.()
+      startupTimer = setTimeout(() => {startupTimer=null;scheduledAcquisitionCycle().catch(e => err(e.message,'acquisition:scheduler'))}, 100); startupTimer.unref?.()
     }
   }
 
@@ -666,10 +673,12 @@ module.exports = function (app) {
     running = true; schedule(); status('Storm Intelligence starting')
   }
 
-  plugin.stop = function () { running = false; if (timer) clearInterval(timer); timer = null; cache.clear(); notify('normal', 'Storm Intelligence plugin stopped'); status('Stopped') }
+  plugin.stop = function () { running = false; if (timer) clearInterval(timer);if(startupTimer)clearTimeout(startupTimer); timer = null;startupTimer=null; cache.clear(); notify('normal', 'Storm Intelligence plugin stopped'); status('Stopped') }
 
   plugin.registerWithRouter = function (router) {
     const r = typeof router.access === 'function' ? router.access('readonly') : router
+    // Signal K routes registered directly on the supplied router are admin-only.
+    const admin = router
     r.get('/ui/plotter-bus.js', async (req, res) => { res.set('Content-Type', 'text/javascript; charset=utf-8'); res.send(await fs.readFile(path.join(__dirname, 'public', 'plotter-bus.js'), 'utf8')) })
     r.get('/ui/radar-panel.html', async (req, res) => { res.set('Content-Type', 'text/html; charset=utf-8'); res.send(await fs.readFile(path.join(__dirname, 'public', 'radar-panel.html'), 'utf8')) })
     r.get('/ui/storm-widget.html', async (req, res) => { res.set('Content-Type', 'text/html; charset=utf-8'); res.send(await fs.readFile(path.join(__dirname, 'public', 'storm-widget.html'), 'utf8')) })
@@ -689,11 +698,28 @@ module.exports = function (app) {
     r.get('/weather-observations',async(req,res)=>res.json(weatherApiContext))
     r.get('/inference',async(req,res)=>res.json(inferenceEngine?.describe()||{}))
     r.get('/replay/:provider/:product', async (req, res) => { try { const frames = await tileStore.frames(req.params.provider, String(req.params.product).toUpperCase()); res.json({ provider: req.params.provider, product: String(req.params.product).toUpperCase(), frames: frames.map(epochMs => ({ epochMs, time: new Date(epochMs).toISOString() })) }) } catch (e) { res.status(500).json({ error: e.message }) } })
-    r.post?.('/prefetch', async (req, res) => { try { res.json({ ok: true, results: await prefetchCycle(), lastPrefetched }) } catch (e) { res.status(500).json({ error: e.message }) } })
-    r.post?.('/acquire', async (req, res) => { try { await acquireCycle(); res.json({ ok: true, lastAcquired }) } catch (e) { res.status(500).json({ error: e.message }) } })
+    admin?.post?.('/prefetch', async (req, res) => { try { const results=await prefetchCycle(),errors=results.filter(x=>x.error||x.failed);res.status(errors.length?502:200).json({ok:errors.length===0,results,lastPrefetched}) } catch (e) { res.status(500).json({ok:false,error:e.message,component:'prefetch'}) } })
+    admin?.post?.('/acquire', async (req, res) => { try { const result=await acquireCycle();if(!result.attempted)return res.status(result.reason==='busy'?409:503).json({ok:false,error:result.reason,component:'acquisition'});res.status(result.ok?200:502).json({...result,lastAcquired}) } catch (e) { res.status(500).json({ok:false,error:e.message,component:'acquisition'}) } })
   }
 
-  plugin.getOpenApi = function () { return { openapi: '3.0.3', info: { title: 'Signal K Storm Intelligence API pilot', version: PACKAGE_VERSION, description: 'Multisensor storm-intelligence reference API composing radar mosaics, lightning, Signal K Weather API and onboard observations through pluggable inference algorithms.' }, paths: { '/providers': { get: { summary: 'Enabled radar mosaic providers' } }, '/operational': { get: { summary: 'Read-only operational dashboard status and ranked approaching storm cells' } }, '/status': { get: { summary: 'Storm Intelligence status' } }, '/cells': { get: { summary: 'Detected/tracked storm cells' } }, '/hazards': { get: { summary: 'Normalized GeoJSON storm hazards with predicted positions' } }, '/lightning':{get:{summary:'Normalized provider-agnostic lightning observations'}}, '/onboard-environment':{get:{summary:'Normalized onboard environmental sensor context'}}, '/weather-observations':{get:{summary:'Signal K Weather API observation evidence sampled around the vessel'}}, '/latest/{provider}/{product}': { get: { summary: 'Latest observation frame' } }, '/timeline/{provider}/{product}': { get: { summary: 'Available/inferred observation timeline' } }, '/playback/{provider}/{product}': { get: { summary: 'Normalized newest-first playback slots' } }, '/replay/{provider}/{product}': { get: { summary: 'Locally prefetched replay frames' } } } } }
+  plugin.getOpenApi = function () {
+    const jsonResponse=(description='Success')=>({description,content:{'application/json':{schema:{type:'object'}}}})
+    const errorResponses={400:jsonResponse('Invalid request'),401:jsonResponse('Authentication required'),403:jsonResponse('Elevated access required'),500:jsonResponse('Internal error'),502:jsonResponse('Upstream operation failed')}
+    const get=(summary,parameters=[])=>({summary,parameters,responses:{200:jsonResponse(),...errorResponses}})
+    const pathParameters=names=>names.map(name=>({name,in:'path',required:true,schema:{type:'string'}}))
+    const paths={
+      '/health':{get:get('Runtime health')},'/providers':{get:get('Enabled radar mosaic providers')},'/products/{provider}':{get:get('Products exposed by a provider',pathParameters(['provider']))},
+      '/operational':{get:get('Read-only operational dashboard status and ranked approaching storm cells')},'/status':{get:get('Storm Intelligence status')},'/cells':{get:get('Detected and tracked storm cells')},'/hazards':{get:get('Normalized GeoJSON storm hazards with predicted positions')},'/lightning':{get:get('Normalized provider-agnostic lightning observations')},'/onboard-environment':{get:get('Normalized onboard environmental sensor context')},'/weather-observations':{get:get('Signal K Weather API observation evidence')},'/inference':{get:get('Inference algorithm status and provenance')},
+      '/latest/{provider}/{product}':{get:get('Latest observation frame',pathParameters(['provider','product']))},
+      '/timeline/{provider}/{product}':{get:get('Available observation timeline',[...pathParameters(['provider','product']),{name:'minutes',in:'query',schema:{type:'integer',minimum:5,maximum:1440}}])},
+      '/playback/{provider}/{product}':{get:get('Normalized newest-first playback slots',pathParameters(['provider','product']))},
+      '/replay/{provider}/{product}':{get:get('Locally prefetched replay frames',pathParameters(['provider','product']))},
+      '/tiles/{provider}/{product}/{z}/{x}/{y}.png':{get:get('Rendered radar tile',[...pathParameters(['provider','product','z','x','y']),{name:'time',in:'query',schema:{type:'string',format:'date-time'}},{name:'slot',in:'query',schema:{type:'integer',minimum:0}}])},
+      '/prefetch':{post:{summary:'Run one administrative prefetch cycle',tags:['Administrative'],security:[{signalkAdmin:[]}],'x-access-level':'admin',responses:{200:jsonResponse('Prefetch completed'),...errorResponses}}},
+      '/acquire':{post:{summary:'Run one administrative acquisition cycle',tags:['Administrative'],security:[{signalkAdmin:[]}],'x-access-level':'admin',responses:{200:jsonResponse('Acquisition completed'),409:jsonResponse('Acquisition already running'),...errorResponses}}}
+    }
+    return {openapi:'3.0.3',info:{title:'Signal K Storm Intelligence API',version:PACKAGE_VERSION,description:'Read-only operational resources plus explicitly separated administrative operations.'},tags:[{name:'Administrative',description:'Side-effecting operations requiring Signal K administrative access.'}],paths,components:{securitySchemes:{signalkAdmin:{type:'http',scheme:'bearer'}}}}
+  }
 
   const allRasterTargets = Object.entries(KNOWN_PRODUCTS).flatMap(([pid, ps]) => Object.entries(ps).filter(([, p]) => p.kind === 'raster').map(([id]) => `${pid}:${id}`))
   const allRawTargets = Object.entries(KNOWN_PRODUCTS).flatMap(([pid, ps]) => Object.entries(ps).filter(([, p]) => p.raw === true).map(([id]) => `${pid}:${id}`))
@@ -718,7 +744,7 @@ module.exports = function (app) {
     minZoom: { type: 'integer', minimum: 0, maximum: 22, default: 4 }, maxZoom: { type: 'integer', minimum: 0, maximum: 22, default: 13 }, cacheSeconds: { type: 'integer', minimum: 0, maximum: 3600, default: 60 }, cacheEntries: { type: 'integer', minimum: 16, maximum: 10000, default: 512 }, requestTimeoutMs: { type: 'integer', minimum: 1000, maximum: 60000, default: 10000 }
   } })
 
-  plugin._test = { ADAPTERS, OBSERVATION_ADAPTERS, INFERENCE_ALGORITHMS, lightningChartRecord, lightningDensityChartRecords, lightningDensityChartId, KNOWN_PRODUCTS, tileBBox3857, normalizeTime, chartRecord, chartRecords, extensionManifest, splitTarget, parseTargets, DEFAULTS, tilesAroundPosition, playbackSlots, resolveSlot, playbackChartId, playbackChartName, hazardChartId, hazardChartName, hazardChartRecords, geometryBounds, config: () => cfg, acquireOne, acquireCycle }
+  plugin._test = { ADAPTERS, OBSERVATION_ADAPTERS, INFERENCE_ALGORITHMS, lightningChartRecord, lightningDensityChartRecords, lightningDensityChartId, KNOWN_PRODUCTS, tileBBox3857, normalizeTime, chartRecord, chartRecords, extensionManifest, splitTarget, parseTargets, DEFAULTS, tilesAroundPosition, playbackSlots, resolveSlot, playbackChartId, playbackChartName, hazardChartId, hazardChartName, hazardChartRecords, geometryBounds, config: () => cfg, acquireOne, acquireCycle, scheduledAcquisitionCycle, lightningCycle, prefetchCycle, activeErrors, timers:()=>({timer,startupTimer,busy}) }
   return plugin
 }
 

@@ -18,7 +18,7 @@ Storm Intelligence is **not** a replacement for official warnings, competent sea
 
 ## Current release
 
-This source tree is the `2.5.7` release line. Version 2 uses the application identity **Storm Intelligence**. The earlier `weatherRadar` Signal K Resource API remains available as a deprecated read-only compatibility alias during v2; new integrations should use `stormIntelligence`.
+This source tree is the `2.5.8` release line. Version 2 uses the application identity **Storm Intelligence**. The earlier `weatherRadar` Signal K Resource API remains available as a deprecated read-only compatibility alias during v2; new integrations should use `stormIntelligence`.
 
 ## Why this project exists
 

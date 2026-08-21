@@ -16,6 +16,8 @@ The core design principles are:
 6. **bounded operation** — caches, retries, storage, concurrency and remote calls are finite;
 7. **safety separation** — decision-support outputs do not directly command navigation systems.
 
+Global storm geometry unwraps longitudes into a local continuous domain before centroid, containment, distance, motion and translation calculations. Published coordinates are normalized back to the conventional longitude range, preserving correct behavior for cells and predictions crossing the antimeridian.
+
 ## 2. Logical components
 
 ```text
