@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Fixed a false approaching-storm alarm when `app.getSelfPath('navigation.position')` returns a full Signal K node (`{ value, timestamp }`) instead of a bare value. `vessel()` now unwraps `.value` for position/SOG/COG, and `StormEngine.evaluate` guards the vessel point (unwrapping `.value` and requiring finite coordinates) so a missing or malformed own-ship position degrades to `normal` rather than fabricating a zero-distance path intersection that promotes distant cells to `alarm`. Fixes #3.
+
 ## 2.5.9 - 2026-08-21
 
 - Fixed Radar-DPC VMI/SRI/accumulated-rain overlays to render the current v2 time-qualified WebP data tiles instead of associating new REST timestamps with divergent legacy-WMS imagery; transport, decoding and palettes remain isolated in the Radar-DPC adapter.

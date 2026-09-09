@@ -172,7 +172,7 @@ module.exports = function (app) {
   const status = m => app.setPluginStatus?.(m)
 
   function dataDir() { return app.getDataDirPath?.() || path.join(process.cwd(), 'storm-intelligence-data') }
-  function vessel() { return { position: app.getSelfPath?.('navigation.position') || null, sog: app.getSelfPath?.('navigation.speedOverGround'), cog: app.getSelfPath?.('navigation.courseOverGroundTrue') } }
+  function vessel() { const sk = p => { const n = app.getSelfPath?.(p); return (n && typeof n === 'object' && 'value' in n) ? n.value : n }; return { position: sk('navigation.position') || null, sog: sk('navigation.speedOverGround'), cog: sk('navigation.courseOverGroundTrue') } }
   function getProvider(id) { const p = providers.get(id); if (!p) throw Object.assign(new Error(`Radar mosaic provider not enabled: ${id}`), { statusCode: 404 }); return p }
   function getProduct(provider, product) { const m = provider.products()[product]; if (!m) throw Object.assign(new Error(`Unsupported product ${provider.id}:${product}`), { statusCode: 404 }); return m }
 
