@@ -76,8 +76,9 @@ The bundled radar-provider registry currently includes:
 - **Radar-DPC** — Italian Dipartimento della Protezione Civile national radar products; supports raster mosaics and provider-native HRD severe-precipitation vectors where available.
 - **DWD** — Deutscher Wetterdienst WMS products with provider time dimensions and observation/nowcast separation.
 - **RainViewer** — REST-discovered, provider-native XYZ radar frames.
+- **AEMET** — Spanish State Meteorological Agency single-site regional radar (currently Palma de Mallorca, Balearic Islands). Display-only reflectivity reconstructed from the OpenData palette-GIF product; see [`docs/aemet-provider.md`](docs/aemet-provider.md).
 
-The generic radar contract supports both WMS-style BBOX rendering and native XYZ tiles. A fourth radar provider should require a new adapter under `providers`, not changes to the inference engine or user interfaces. See [`docs/radar-provider-specification.md`](docs/radar-provider-specification.md).
+The generic radar contract supports both WMS-style BBOX rendering and native XYZ tiles. A new radar provider should require a new adapter under `providers`, not changes to the inference engine or user interfaces. See [`docs/radar-provider-specification.md`](docs/radar-provider-specification.md).
 
 ### Lightning observations
 

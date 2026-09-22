@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Added an AEMET regional-radar provider (Spain / western Mediterranean), first site Palma de Mallorca (`pm`, Balearic Islands), closing the Iberian coverage gap left by Radar-DPC/DWD/OPERA. Display tier only: reflectivity is reconstructed from the OpenData palette-GIF product (palette→dBZ) and geolocated by a coastline-matched linear EPSG:4326 fit, then served as EPSG:3857 tiles. Live-only (the API exposes no archive) and, per radar-provider-specification.md §7, it deliberately advertises no `downloadRaw`/`cellsFromRaw` from a rendered product. New dependency `omggif` (GIF decode); deterministic raster/contract tests and reproducibility scripts included.
+
 ## 2.5.9 - 2026-08-21
 
 - Fixed Radar-DPC VMI/SRI/accumulated-rain overlays to render the current v2 time-qualified WebP data tiles instead of associating new REST timestamps with divergent legacy-WMS imagery; transport, decoding and palettes remain isolated in the Radar-DPC adapter.
