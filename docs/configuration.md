@@ -95,6 +95,7 @@ maxEscalationLevels
 timeoutMs
 maxRetries
 maxCandidatesPerRequest
+maxCandidateDistanceNm
 cacheTtlSec
 disableStorage
 ```

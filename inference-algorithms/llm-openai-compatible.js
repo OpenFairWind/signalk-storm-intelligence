@@ -89,6 +89,7 @@ module.exports = {
     maxRetries: { title: 'Retry count for transient API errors', type: 'integer', minimum: 0, maximum: 5, default: 1 },
     maxOutputTokens: { title: 'Maximum model output tokens', type: 'integer', minimum: 128, maximum: 8192, default: 1200 },
     maxCandidatesPerRequest: { title: 'Maximum candidates per API request', type: 'integer', minimum: 1, maximum: 32, default: 8 },
+    maxCandidateDistanceNm: { title: 'Only assess candidates that come within (NM, 0 = all)', description: 'A candidate is sent to the model when it is, or is predicted to come, within this distance of the vessel: current distance, closest point of its predicted path, or closing CPA. Candidates farther away keep the state the other algorithms gave them and cost no request.', type: 'number', minimum: 0, maximum: 500, default: 40 },
     cacheTtlSec: { title: 'Identical-evidence result cache (seconds)', type: 'integer', minimum: 0, maximum: 3600, default: 60 },
     disableStorage: { title: 'Request no provider-side response storage when supported', type: 'boolean', default: true },
     requireApiKey: { title: 'Require configured API-key environment variable', type: 'boolean', default: true }
@@ -98,6 +99,7 @@ module.exports = {
     const maxEscalationLevels = Math.max(0, Math.min(2, Math.floor(Number(settings.maxEscalationLevels ?? 1))))
     const maxCandidates = Math.max(1, Math.min(32, Number(settings.maxCandidatesPerRequest) || 8))
     const cacheTtlMs = Math.max(0, Number(settings.cacheTtlSec ?? 60)) * 1000
+    const maxCandidateDistanceMeters = Math.max(0, Number(settings.maxCandidateDistanceNm ?? 40) || 0) * 1852
     const apiKeyEnv = String(settings.apiKeyEnv || 'OPENAI_API_KEY')
     const requireApiKey = settings.requireApiKey !== false
     const client = new OpenAICompatibleClient({
@@ -114,6 +116,15 @@ module.exports = {
       fetch: common.fetch
     })
     const cache = new Map()
+
+    // Nearest the candidate is, or is predicted to be, to the vessel. Unknown
+    // distances count as near, so a cell is never skipped for missing data.
+    function nearestApproachMeters(cell) {
+      const distances = [cell?.distanceMeters, cell?.pathThreat?.minDistanceMeters]
+      if (cell?.cpa?.closing) distances.push(cell.cpa.dcpaMeters)
+      const known = distances.map(Number).filter(Number.isFinite)
+      return known.length ? Math.min(...known) : 0
+    }
 
     async function assessBatch(batch, context) {
       const request = {
@@ -143,7 +154,12 @@ module.exports = {
       capabilities: { llm: true, remoteInference: true, openaiCompatible: true, structuredOutput: true, multimodalEvidence: true, candidateRefiner: true, detector: false },
       model: { interface: 'openai-compatible', protocol: client.protocol, baseUrl: client.baseUrl, model: client.model, outputSchema: 'storm_intelligence_assessment/1' },
       async infer(context) {
-        const candidates = Array.isArray(context.baseCells) ? context.baseCells : []
+        const all = Array.isArray(context.baseCells) ? context.baseCells : []
+        // Candidates left out are not returned, so the engine keeps them as the
+        // other algorithms produced them.
+        const candidates = maxCandidateDistanceMeters > 0
+          ? all.filter(cell => nearestApproachMeters(cell) <= maxCandidateDistanceMeters)
+          : all
         if (!candidates.length) return []
         if (requireApiKey && apiKeyEnv && !process.env[apiKeyEnv]) throw new Error(`LLM API key environment variable ${apiKeyEnv} is not set`)
         const output = []

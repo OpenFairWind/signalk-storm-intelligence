@@ -110,6 +110,7 @@ Example using OpenAI:
       "timeoutMs": 15000,
       "maxRetries": 1,
       "maxCandidatesPerRequest": 8,
+      "maxCandidateDistanceNm": 40,
       "cacheTtlSec": 60,
       "disableStorage": true
     }
@@ -135,7 +136,7 @@ Disabling API-key requirements is appropriate only for a deliberately unauthenti
 
 ## Cost and rate control
 
-The algorithm batches multiple candidates into one request up to `maxCandidatesPerRequest`. Identical evidence requests are cached for `cacheTtlSec`. Transient 408/409/429/5xx and network failures are retried using bounded backoff.
+Only candidates that are, or are predicted to come, within `maxCandidateDistanceNm` of the vessel (40 NM by default; 0 sends every candidate) are sent to the model: the current distance, the closest point of the predicted path and a closing CPA are all considered, and a candidate with no distance at all is still sent. A regional radar often reports dozens of cells far beyond any threat to the vessel; those keep the state the other algorithms gave them and cost no request. The algorithm batches the remaining candidates into one request up to `maxCandidatesPerRequest`. Identical evidence requests are cached for `cacheTtlSec`. Transient 408/409/429/5xx and network failures are retried using bounded backoff.
 
 Keep the LLM disabled unless its additional inference value justifies network latency and cost. Deterministic algorithms continue operating if the LLM request fails.
 

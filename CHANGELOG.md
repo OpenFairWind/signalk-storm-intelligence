@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- The OpenAI-compatible LLM algorithm only assesses candidates that are, or are predicted to come, within `maxCandidateDistanceNm` of the vessel (default 40 NM, 0 = all). Cells far beyond any threat keep the state of the other algorithms and no longer cost model requests.
+
 ## 2.5.9 - 2026-08-21
 
 - Fixed Radar-DPC VMI/SRI/accumulated-rain overlays to render the current v2 time-qualified WebP data tiles instead of associating new REST timestamps with divergent legacy-WMS imagery; transport, decoding and palettes remain isolated in the Radar-DPC adapter.
